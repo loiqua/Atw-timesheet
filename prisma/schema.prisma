@@ -48,7 +48,7 @@ model User {
   fullName  String
   role      Role     @default(EMPLOYEE)
   isActive  Boolean  @default(true)
-  lastLogin DateTime?
+  lastLogin DateTime? @db.Timestamptz(6)
 
   tasks         Task[]
   presences     Presence[]
@@ -56,7 +56,7 @@ model User {
   domainId      String? // domaine principal (optionnel)
   domain        Domain? @relation(fields: [domainId], references: [id])
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
 }
 
 model Domain {
@@ -87,7 +87,7 @@ model Task {
   id          String   @id @default(uuid())
   userId      String
   domainId    String
-  date        DateTime
+  date        DateTime @db.Timestamptz(6)
   title       String
   description String?
   durationMin Int
@@ -99,8 +99,8 @@ model Task {
   location Location?
   report   Report?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 }
 
 model Location {
@@ -110,8 +110,8 @@ model Location {
   longitude Float
   address   String?
 
-  task      Task @relation(fields: [taskId], references: [id])
-  createdAt DateTime @default(now())
+  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
 }
 
 model Report {
@@ -127,7 +127,7 @@ model Report {
 model Presence {
   id       String @id @default(uuid())
   userId   String
-  date     DateTime
+  date     DateTime @db.Date
   status   PresenceStatus @default(PRESENT)
   note     String?
 
