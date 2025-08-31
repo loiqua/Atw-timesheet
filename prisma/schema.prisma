@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum TaskStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum PresenceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+}
+
+enum ReportType {
+  STANDARD
+  CUSTOM
+}
+
+// Models
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String?  @unique
+  password  String
+  fullName  String
+  role      Role     @default(EMPLOYEE)
+  isActive  Boolean  @default(true)
+  lastLogin DateTime? @db.Timestamptz(6)
+
+  tasks         Task[]
+  presences     Presence[]
+  managedDomains ManagerDomain[]
+  domainId      String? // domaine principal (optionnel)
+  domain        Domain? @relation(fields: [domainId], references: [id])
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model Domain {
+  id          String          @id @default(uuid())
+  name        String          @unique
+  slug        String          @unique
+  description String?
+
+  users     User[]
+  tasks     Task[]
+  managers  ManagerDomain[]
+}
+
+model ManagerDomain {
+  id       String @id @default(uuid())
+  userId   String
+  domainId String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, domainId])
+  @@index([userId])
+  @@index([domainId])
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  userId      String
+  domainId    String
+  date        DateTime @db.Timestamptz(6)
+  title       String
+  description String?
+  durationMin Int
+  status      TaskStatus @default(DRAFT)
+  managerNote String?
+
+  user     User   @relation(fields: [userId], references: [id])
+  domain   Domain @relation(fields: [domainId], references: [id])
+  location Location?
+  report   Report?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  taskId    String   @unique
+  latitude  Float
+  longitude Float
+  address   String?
+
+  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model Report {
+  id        String     @id @default(uuid())
+  taskId    String     @unique
+  type      ReportType
+  content   Json
+
+  task      Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now()) @db.Timestamptz(6)
+}
+
+model Presence {
+  id       String @id @default(uuid())
+  userId   String
+  date     DateTime @db.Date
+  status   PresenceStatus @default(PRESENT)
+  note     String?
+
+  user     User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date]) // 1 présence par jour et par user
+}

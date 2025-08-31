@@ -17,6 +17,10 @@
     "apps/*"
   ],
   "devDependencies": {
+    "prisma": "^6.15.0",
     "turbo": "^2.5.6"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.15.0"
   }
 }
