@@ -1,11 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-// Temporary enum until Prisma client is generated
-enum Role {
-  ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
-  EMPLOYEE = 'EMPLOYEE',
-}
+import { Role } from '../../../../../generated/prisma';
 
 export const ROLES_KEY = 'roles';
 

@@ -87,6 +87,8 @@ export class AuthService {
         password: hashedPassword,
         role,
         domainId,
+        resetToken: null,
+        resetTokenExpiry: null,
       },
       select: {
         id: true,
@@ -217,9 +219,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findFirst({
       where: {
-        // @ts-expect-error - resetToken fields will be added after migration
         resetToken: token,
-        // @ts-expect-error - resetToken fields will be added after migration
         resetTokenExpiry: {
           gt: new Date(),
         },
