@@ -1,98 +1,181 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# ATW Timesheet API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A comprehensive NestJS backend application for ATW Timesheet management with authentication, user management, and role-based access control.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
+
+- 🔐 **Authentication System**
+  - User registration with email, username, and domain
+  - Login with email or username
+  - JWT tokens (access + refresh)
+  - Password reset with secure tokens
+  
+- 👥 **User Management**
+  - Role-based access control (USER, ADMIN, MANAGER)
+  - User activation/deactivation
+  - Role promotion and management
+  
+- 🛡️ **Security**
+  - Password hashing with bcrypt
+  - JWT authentication guards
+  - Role-based route protection
+  - Input validation with class-validator
+  
+- 📚 **API Documentation**
+  - Swagger/OpenAPI documentation
+  - Interactive API explorer at `/api`
+
+## Tech Stack
+
+- **Framework**: NestJS
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: Passport.js + JWT
+- **Validation**: class-validator
+- **Documentation**: Swagger/OpenAPI
+- **Testing**: Jest
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+ATW Timesheet API built with NestJS framework, providing robust authentication and user management capabilities.
 
-## Project setup
+## Prerequisites
 
+- Node.js (v18 or higher)
+- PostgreSQL database
+- npm or yarn package manager
+
+## Environment Setup
+
+1. **Clone the repository**
 ```bash
-$ npm install
+git clone <repository-url>
+cd atw-timesheet/apps/api
 ```
 
-## Compile and run the project
-
+2. **Install dependencies**
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
+3. **Environment Variables**
+Create a `.env` file in the root directory:
+```env
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/atw_timesheet?schema=public"
 
-```bash
-# unit tests
-$ npm run test
+# JWT Configuration
+JWT_SECRET="your-super-secret-jwt-key"
+JWT_EXPIRES_IN="1h"
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# Application
+PORT=8000
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+4. **Database Setup**
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Generate Prisma client
+npx prisma generate
+
+# Run database migrations
+npx prisma migrate deploy
+
+# (Optional) Seed the database
+npx prisma db seed
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Running the Application
 
-## Resources
+```bash
+# Development mode with hot reload
+npm run start:dev
 
-Check out a few resources that may come in handy when working with NestJS:
+# Production mode
+npm run start:prod
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# Debug mode
+npm run start:debug
+```
 
-## Support
+The API will be available at `http://localhost:8000`
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## API Documentation
 
-## Stay in touch
+Once the application is running, visit:
+- **Swagger UI**: `http://localhost:8000/api`
+- **API Endpoints**: `http://localhost:8000`
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Testing
+
+```bash
+# Unit tests
+npm run test
+
+# Watch mode for tests
+npm run test:watch
+
+# Test coverage
+npm run test:cov
+
+# E2E tests
+npm run test:e2e
+```
+
+## API Endpoints
+
+### Authentication
+- `POST /auth/register` - Register a new user
+- `POST /auth/login` - Login user
+- `POST /auth/forgot-password` - Request password reset
+- `POST /auth/reset-password` - Reset password with token
+- `GET /auth/profile` - Get user profile (protected)
+
+### User Management
+- `GET /users` - Get all users (Admin/Manager only)
+- `GET /users/:id` - Get user by ID (Admin/Manager only)
+- `PUT /users/:id/role` - Update user role (Admin only)
+- `PUT /users/:id/activate` - Activate user (Admin only)
+- `PUT /users/:id/deactivate` - Deactivate user (Admin only)
+
+## User Roles
+
+- **USER**: Basic access level (default for new users)
+- **MANAGER**: Can view and manage users
+- **ADMIN**: Full access, can promote users and manage all aspects
+
+## Database Schema
+
+The application uses the following main entities:
+- **User**: Stores user information, credentials, and roles
+- **Domain**: Predefined domains for user registration
+- **Role**: Enum defining user permission levels
+
+## Development
+
+### Project Structure
+```
+src/
+├── auth/           # Authentication module
+├── users/          # User management module
+├── prisma/         # Database service
+├── generated/      # Prisma generated client
+└── main.ts         # Application entry point
+```
+
+### Adding New Features
+1. Create a new module: `nest g module feature-name`
+2. Add service: `nest g service feature-name`
+3. Add controller: `nest g controller feature-name`
+4. Update database schema in `prisma/schema.prisma`
+5. Run migration: `npx prisma migrate dev`
+
+## Troubleshooting
+
+### Common Issues
+- **Database connection**: Verify DATABASE_URL in .env
+- **JWT errors**: Check JWT_SECRET is set
+- **Migration issues**: Run `npx prisma migrate reset`
+- **Port conflicts**: Change PORT in .env file
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is [MIT licensed](LICENSE).
