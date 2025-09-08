@@ -45,6 +45,7 @@ export class AuthService {
     const { email, fullName, username, password, domainId } = registerDto;
 
     // Check if user already exists
+
     const existingUser = await this.prisma.user.findFirst({
       where: {
         OR: [{ email }, ...(username ? [{ username }] : [])],
@@ -72,10 +73,12 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Check if this is the first user (should be ADMIN)
+
     const userCount = await this.prisma.user.count();
     const role = userCount === 0 ? Role.ADMIN : Role.EMPLOYEE;
 
     // Create user
+
     const user = await this.prisma.user.create({
       data: {
         email,
@@ -99,7 +102,9 @@ export class AuthService {
     });
 
     // Generate tokens
+
     const userWithUpdatedAt = { ...user, updatedAt: new Date() };
+
     const tokens = await this.generateTokens(userWithUpdatedAt);
 
     return { user: userWithUpdatedAt, tokens };
@@ -112,6 +117,7 @@ export class AuthService {
     const { emailOrUsername, password } = loginDto;
 
     // Find user by email or username
+
     const user = await this.prisma.user.findFirst({
       where: {
         OR: [{ email: emailOrUsername }, { username: emailOrUsername }],
@@ -136,12 +142,14 @@ export class AuthService {
     }
 
     // Verify password
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     // Update last login
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLogin: new Date() },
@@ -155,6 +163,7 @@ export class AuthService {
     };
 
     // Generate tokens
+
     const tokens = await this.generateTokens(userWithoutPassword);
 
     return { user: userWithoutPassword, tokens };
@@ -182,6 +191,7 @@ export class AuthService {
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
 
     // Save reset token
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
@@ -207,7 +217,9 @@ export class AuthService {
 
     const user = await this.prisma.user.findFirst({
       where: {
+        // @ts-expect-error - resetToken fields will be added after migration
         resetToken: token,
+        // @ts-expect-error - resetToken fields will be added after migration
         resetTokenExpiry: {
           gt: new Date(),
         },
@@ -224,6 +236,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
     // Update password and clear reset token
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
