@@ -49,6 +49,10 @@ model User {
   role      Role     @default(EMPLOYEE)
   isActive  Boolean  @default(true)
   lastLogin DateTime? @db.Timestamptz(6)
+  
+  // Password reset fields
+  resetToken       String?   
+  resetTokenExpiry DateTime? @db.Timestamptz(6)
 
   tasks         Task[]
   presences     Presence[]
@@ -57,6 +61,7 @@ model User {
   domain        Domain? @relation(fields: [domainId], references: [id])
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 }
 
 model Domain {
