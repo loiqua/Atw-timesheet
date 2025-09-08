@@ -17,6 +17,8 @@
     "apps/*"
   ],
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.3.1",
     "prisma": "^6.15.0",
     "turbo": "^2.5.6"
   },
