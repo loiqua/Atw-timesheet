@@ -9,7 +9,7 @@ const Header = () => {
       <div className="lg:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <button 
+            <button
               type="button"
               aria-label="Ouvrir le menu de navigation"
               className="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"

@@ -28,7 +28,9 @@ const DashboardPage = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
-              <Label htmlFor="filter-date" className="sr-only">Date</Label>
+              <Label htmlFor="filter-date" className="sr-only">
+                Date
+              </Label>
               <Input
                 id="filter-date"
                 name="date"

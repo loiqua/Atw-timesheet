@@ -1,22 +1,23 @@
 import {
-  Injectable,
-  ConflictException,
-  UnauthorizedException,
-  NotFoundException,
   BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../prisma/prisma.service';
-import {
-  RegisterDto,
-  LoginDto,
-  ForgotPasswordDto,
-  ResetPasswordDto,
-} from './dto';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { Role } from '../../../../generated/prisma';
+import { PrismaService } from '../prisma/prisma.service';
+import {
+  ForgotPasswordDto,
+  LoginDto,
+  RegisterDto,
+  ResetPasswordDto,
+} from './dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 type UserResponse = {
   id: string;
@@ -33,9 +34,11 @@ type UserResponse = {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<{
@@ -43,6 +46,7 @@ export class AuthService {
     tokens: { accessToken: string; refreshToken: string };
   }> {
     const { email, fullName, username, password, domainId } = registerDto;
+    this.logger.log(`Register attempt: email=${email}, username=${username}`);
 
     // Check if user already exists
 
@@ -53,6 +57,9 @@ export class AuthService {
     });
 
     if (existingUser) {
+      this.logger.warn(
+        `Register failed: email or username already exists (email=${email}, username=${username})`,
+      );
       throw new ConflictException(
         'User with this email or username already exists',
       );
@@ -83,12 +90,10 @@ export class AuthService {
       data: {
         email,
         fullName,
-        username,
+        username: username ?? null,
         password: hashedPassword,
         role,
         domainId,
-        resetToken: null,
-        resetTokenExpiry: null,
       },
       select: {
         id: true,
@@ -100,16 +105,22 @@ export class AuthService {
         domainId: true,
         lastLogin: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 
     // Generate tokens
+    const tokens = await this.generateTokens(user);
 
-    const userWithUpdatedAt = { ...user, updatedAt: new Date() };
+    // Hash and store refreshToken
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 12);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken: hashedRefreshToken },
+    });
 
-    const tokens = await this.generateTokens(userWithUpdatedAt);
-
-    return { user: userWithUpdatedAt, tokens };
+    this.logger.log(`Register success: userId=${user.id}, email=${user.email}`);
+    return { user, tokens };
   }
 
   async login(loginDto: LoginDto): Promise<{
@@ -117,6 +128,7 @@ export class AuthService {
     tokens: { accessToken: string; refreshToken: string };
   }> {
     const { emailOrUsername, password } = loginDto;
+    this.logger.log(`Login attempt: identifier=${emailOrUsername}`);
 
     // Find user by email or username
 
@@ -135,11 +147,15 @@ export class AuthService {
         domainId: true,
         lastLogin: true,
         createdAt: true,
+        updatedAt: true,
         password: true,
       },
     });
 
     if (!user) {
+      this.logger.warn(
+        `Login failed: user not found (identifier=${emailOrUsername})`,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -147,6 +163,9 @@ export class AuthService {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      this.logger.warn(
+        `Login failed: invalid password (userId=${user.id}, identifier=${emailOrUsername})`,
+      );
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -156,17 +175,21 @@ export class AuthService {
       where: { id: user.id },
       data: { lastLogin: new Date() },
     });
+    this.logger.log(`Login success: userId=${user.id}, email=${user.email}`);
 
     // Remove password from response and add updatedAt
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _, ...userWithoutPassword } = {
-      ...user,
-      updatedAt: new Date(),
-    };
+    const { password: _, ...userWithoutPassword } = user;
 
     // Generate tokens
-
     const tokens = await this.generateTokens(userWithoutPassword);
+
+    // Hash and store refreshToken
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 12);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken: hashedRefreshToken },
+    });
 
     return { user: userWithoutPassword, tokens };
   }
@@ -176,12 +199,14 @@ export class AuthService {
   ): Promise<{ message: string }> {
     const { email } = forgotPasswordDto;
 
-    const user = await this.prisma.user.findUnique({
+    this.logger.log(`Forgot password attempt: email=${email}`);
+    const user = await this.prisma.user.findFirst({
       where: { email, isActive: true },
     });
 
     if (!user) {
       // Don't reveal if user exists or not
+      this.logger.warn(`Forgot password: no user found for email=${email}`);
       return {
         message:
           'If an account with that email exists, a password reset link has been sent.',
@@ -197,15 +222,18 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        resetToken,
-        resetTokenExpiry,
+        resetToken: resetToken,
+        resetTokenExpiry: resetTokenExpiry,
       },
     });
 
     // TODO: Send email with reset token
     // In a real application, you would send an email here
-    console.log(`Reset token for ${email}: ${resetToken}`);
+    this.logger.verbose(`Reset token for ${email}: ${resetToken}`);
 
+    this.logger.log(
+      `Forgot password: reset token generated for userId=${user.id}, email=${email}`,
+    );
     return {
       message:
         'If an account with that email exists, a password reset link has been sent.',
@@ -217,6 +245,7 @@ export class AuthService {
   ): Promise<{ message: string }> {
     const { token, newPassword } = resetPasswordDto;
 
+    this.logger.log(`Reset password attempt: token=${token}`);
     const user = await this.prisma.user.findFirst({
       where: {
         resetToken: token,
@@ -228,6 +257,9 @@ export class AuthService {
     });
 
     if (!user) {
+      this.logger.warn(
+        `Reset password failed: invalid or expired token=${token}`,
+      );
       throw new BadRequestException('Invalid or expired reset token');
     }
 
@@ -235,22 +267,25 @@ export class AuthService {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password and clear reset token
-
+    // Update password, clear reset token, et révoque refreshToken
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
         password: hashedPassword,
         resetToken: null,
         resetTokenExpiry: null,
+        refreshToken: null, // révoque tous les refresh tokens
       },
     });
+    this.logger.log(
+      `Reset password success: userId=${user.id}, email=${user.email}`,
+    );
 
     return { message: 'Password has been reset successfully' };
   }
 
   async validateUser(payload: JwtPayload): Promise<UserResponse | null> {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.user.findFirst({
       where: { id: payload.sub, isActive: true },
       select: {
         id: true,
@@ -262,10 +297,11 @@ export class AuthService {
         domainId: true,
         lastLogin: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
 
-    return user ? { ...user, updatedAt: new Date() } : null;
+    return user;
   }
 
   private async generateTokens(
@@ -283,5 +319,43 @@ export class AuthService {
     ]);
 
     return { accessToken, refreshToken };
+  }
+  async refreshTokens(
+    userId: string,
+    refreshToken: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    this.logger.log(`Refresh token attempt: userId=${userId}`);
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.refreshToken) {
+      this.logger.warn(
+        `Refresh token failed: user not found or no refreshToken (userId=${userId})`,
+      );
+      throw new UnauthorizedException('Access Denied');
+    }
+    const isValid = await bcrypt.compare(refreshToken, user.refreshToken);
+    if (!isValid) {
+      this.logger.warn(
+        `Refresh token failed: invalid token (userId=${userId})`,
+      );
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    // Génère de nouveaux tokens
+    const tokens = await this.generateTokens(user);
+    // Stocke le nouveau refreshToken hashé
+    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 12);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken: hashedRefreshToken },
+    });
+    this.logger.log(`Refresh token success: userId=${userId}`);
+    return tokens;
+  }
+
+  async logout(userId: string): Promise<void> {
+    this.logger.log(`Logout: userId=${userId}`);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
   }
 }

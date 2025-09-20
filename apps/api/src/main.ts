@@ -1,10 +1,19 @@
-import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use((helmet as unknown as () => void)());
+
+  // CORS (à adapter selon ton frontend)
+  app.enableCors({
+    origin: [process.env.FRONTEND_URL || 'http://localhost:3000'],
+    credentials: true,
+  });
 
   // Global validation pipe
   app.useGlobalPipes(

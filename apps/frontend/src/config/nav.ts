@@ -1,4 +1,9 @@
-import { Clock, Calendar, LayoutDashboard, type LucideIcon } from 'lucide-react';
+import {
+  Clock,
+  Calendar,
+  LayoutDashboard,
+  type LucideIcon,
+} from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -8,18 +13,18 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   {
-    href: '/dashboard',
-    label: 'TimeSheet',
+    href: "/dashboard",
+    label: "TimeSheet",
     icon: Clock,
   },
   {
-    href: '/dashboard/calendar',
-    label: 'Calendrier',
+    href: "/dashboard/calendar",
+    label: "Calendrier",
     icon: Calendar,
   },
   {
-    href: '/dashboard/reports',
-    label: 'Dashboard',
+    href: "/dashboard/reports",
+    label: "Dashboard",
     icon: LayoutDashboard,
   },
 ];

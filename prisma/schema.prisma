@@ -49,6 +49,9 @@ model User {
   role      Role     @default(EMPLOYEE)
   isActive  Boolean  @default(true)
   lastLogin DateTime? @db.Timestamptz(6)
+
+  // Refresh token hash (sécurité)
+  refreshToken String?
   
   // Password reset fields
   resetToken       String?   

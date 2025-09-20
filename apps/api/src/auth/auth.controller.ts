@@ -1,27 +1,28 @@
 import {
-  Controller,
-  Post,
   Body,
+  Controller,
+  Get,
   HttpCode,
   HttpStatus,
-  UseGuards,
-  Get,
+  Post,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import {
-  RegisterDto,
-  LoginDto,
   ForgotPasswordDto,
+  LoginDto,
+  RegisterDto,
   ResetPasswordDto,
 } from './dto';
+import { LogoutDto, RefreshTokenDto } from './dto/refresh-logout.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('Authentication')
@@ -77,5 +78,24 @@ export class AuthController {
   getProfile(@Request() req: { user: any }) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return req.user;
+  }
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access and refresh tokens' })
+  @ApiResponse({ status: 200, description: 'Tokens refreshed' })
+  async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.refreshTokens(
+      refreshTokenDto.userId,
+      refreshTokenDto.refreshToken,
+    );
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout user and revoke refresh token' })
+  @ApiResponse({ status: 200, description: 'User logged out' })
+  async logout(@Body() logoutDto: LogoutDto) {
+    await this.authService.logout(logoutDto.userId);
+    return { message: 'User logged out' };
   }
 }

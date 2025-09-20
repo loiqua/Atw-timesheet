@@ -9,18 +9,15 @@ A comprehensive NestJS backend application for ATW Timesheet management with aut
   - Login with email or username
   - JWT tokens (access + refresh)
   - Password reset with secure tokens
-  
 - 👥 **User Management**
   - Role-based access control (USER, ADMIN, MANAGER)
   - User activation/deactivation
   - Role promotion and management
-  
 - 🛡️ **Security**
   - Password hashing with bcrypt
   - JWT authentication guards
   - Role-based route protection
   - Input validation with class-validator
-  
 - 📚 **API Documentation**
   - Swagger/OpenAPI documentation
   - Interactive API explorer at `/api`
@@ -47,18 +44,21 @@ ATW Timesheet API built with NestJS framework, providing robust authentication a
 ## Environment Setup
 
 1. **Clone the repository**
+
 ```bash
 git clone <repository-url>
 cd atw-timesheet/apps/api
 ```
 
 2. **Install dependencies**
+
 ```bash
 npm install
 ```
 
 3. **Environment Variables**
-Create a `.env` file in the root directory:
+   Create a `.env` file in the root directory:
+
 ```env
 # Database
 DATABASE_URL="postgresql://username:password@localhost:5432/atw_timesheet?schema=public"
@@ -72,6 +72,7 @@ PORT=8000
 ```
 
 4. **Database Setup**
+
 ```bash
 # Generate Prisma client
 npx prisma generate
@@ -101,6 +102,7 @@ The API will be available at `http://localhost:8000`
 ## API Documentation
 
 Once the application is running, visit:
+
 - **Swagger UI**: `http://localhost:8000/api`
 - **API Endpoints**: `http://localhost:8000`
 
@@ -123,6 +125,7 @@ npm run test:e2e
 ## API Endpoints
 
 ### Authentication
+
 - `POST /auth/register` - Register a new user
 - `POST /auth/login` - Login user
 - `POST /auth/forgot-password` - Request password reset
@@ -130,6 +133,7 @@ npm run test:e2e
 - `GET /auth/profile` - Get user profile (protected)
 
 ### User Management
+
 - `GET /users` - Get all users (Admin/Manager only)
 - `GET /users/:id` - Get user by ID (Admin/Manager only)
 - `PUT /users/:id/role` - Update user role (Admin only)
@@ -145,6 +149,7 @@ npm run test:e2e
 ## Database Schema
 
 The application uses the following main entities:
+
 - **User**: Stores user information, credentials, and roles
 - **Domain**: Predefined domains for user registration
 - **Role**: Enum defining user permission levels
@@ -152,6 +157,7 @@ The application uses the following main entities:
 ## Development
 
 ### Project Structure
+
 ```
 src/
 ├── auth/           # Authentication module
@@ -162,6 +168,7 @@ src/
 ```
 
 ### Adding New Features
+
 1. Create a new module: `nest g module feature-name`
 2. Add service: `nest g service feature-name`
 3. Add controller: `nest g controller feature-name`
@@ -171,6 +178,7 @@ src/
 ## Troubleshooting
 
 ### Common Issues
+
 - **Database connection**: Verify DATABASE_URL in .env
 - **JWT errors**: Check JWT_SECRET is set
 - **Migration issues**: Run `npx prisma migrate reset`

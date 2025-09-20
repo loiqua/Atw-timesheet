@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { navItems } from '@/config/nav';
-import { cn } from '@/lib/utils'; // Assuming shadcn/ui `cn` utility is available
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { navItems } from "@/config/nav";
+import { cn } from "@/lib/utils"; // Assuming shadcn/ui `cn` utility is available
 
 export function NavLinks() {
   const pathname = usePathname();
@@ -17,10 +17,10 @@ export function NavLinks() {
             key={item.href}
             href={item.href}
             className={cn(
-              'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors',
+              "flex items-center gap-3 px-4 py-2 rounded-lg transition-colors",
               isActive
-                ? 'bg-yellow-400 text-blue-900 font-semibold'
-                : 'hover:bg-blue-700'
+                ? "bg-yellow-400 text-blue-900 font-semibold"
+                : "hover:bg-blue-700",
             )}
           >
             <item.icon className="h-5 w-5" />

@@ -1,17 +1,24 @@
-import Link from 'next/link';
-import { tasks, Task } from '@/data/tasks';
-import { domainConfig } from '@/config/domains';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Paperclip, Pencil, Trash2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import Link from "next/link";
+import { tasks, Task } from "@/data/tasks";
+import { domainConfig } from "@/config/domains";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Paperclip, Pencil, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const statusVariantMap = {
-  success: 'success',
-  in_progress: 'secondary',
-  pending: 'outline',
+  success: "success",
+  in_progress: "secondary",
+  pending: "outline",
 } as const;
 
 const TaskCard = ({ task }: { task: Task }) => {
@@ -23,13 +30,17 @@ const TaskCard = ({ task }: { task: Task }) => {
       <CardContent className="p-4 space-y-3">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
-            <DomainIcon className={cn('h-6 w-6', domainColor)} />
+            <DomainIcon className={cn("h-6 w-6", domainColor)} />
             <div>
               <p className="font-semibold">{task.activity}</p>
-              <p className="text-sm text-muted-foreground capitalize">{task.domain}</p>
+              <p className="text-sm text-muted-foreground capitalize">
+                {task.domain}
+              </p>
             </div>
           </div>
-          <Badge variant={statusVariantMap[task.status]} className="capitalize">{task.status.replace('_', ' ')}</Badge>
+          <Badge variant={statusVariantMap[task.status]} className="capitalize">
+            {task.status.replace("_", " ")}
+          </Badge>
         </div>
         <p className="text-sm text-muted-foreground pl-9">{task.description}</p>
         <div className="flex justify-between items-center pt-3 mt-3 border-t">
@@ -103,16 +114,18 @@ export function TaskList() {
                     <TableCell>{task.date}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <DomainIcon className={cn('h-5 w-5', domainColor)} />
+                        <DomainIcon className={cn("h-5 w-5", domainColor)} />
                         <span className="capitalize">{task.domain}</span>
                       </div>
                     </TableCell>
                     <TableCell>{task.activity}</TableCell>
-                    <TableCell className="max-w-xs truncate">{task.description}</TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {task.description}
+                    </TableCell>
                     <TableCell>
                       {task.attachment ? (
-                        <Link 
-                          href={task.attachment} 
+                        <Link
+                          href={task.attachment}
                           className="flex items-center gap-1 hover:underline text-sm"
                           target="_blank"
                           rel="noopener noreferrer"
@@ -125,21 +138,30 @@ export function TaskList() {
                         <span>-</span>
                       )}
                     </TableCell>
-                    <TableCell><Badge variant={statusVariantMap[task.status]} className="capitalize">{task.status.replace('_', ' ')}</Badge></TableCell>
-                    <TableCell className="text-right">{task.duration}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={statusVariantMap[task.status]}
+                        className="capitalize"
+                      >
+                        {task.status.replace("_", " ")}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {task.duration}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8"
                           aria-label="Modifier la tâche"
                         >
                           <Pencil className="h-4 w-4" aria-hidden="true" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-red-500 hover:text-red-600"
                           aria-label="Supprimer la tâche"
                         >
