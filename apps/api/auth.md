@@ -1,0 +1,377 @@
+# ATW Timesheet API
+
+A comprehensive NestJS backend application for ATW Timesheet management with authentication, user management, and role-based access control.
+
+## Features
+
+- 🔐 **Authentication System**
+  - User registration with email, username, and domain
+  - Login with email or username
+  - JWT tokens (access + refresh)
+  - Password reset with secure tokens
+- 👥 **User Management**
+  - Role-based access control (USER, ADMIN, MANAGER)
+  - User activation/deactivation
+  - Role promotion and management
+- 🛡️ **Security**
+  - Password hashing with bcrypt
+  - JWT authentication guards
+  - Role-based route protection
+  - Input validation with class-validator
+- 📚 **API Documentation**
+  - Swagger/OpenAPI documentation
+  - Interactive API explorer at `/api`
+
+## Tech Stack
+
+- **Framework**: NestJS
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: Passport.js + JWT
+- **Validation**: class-validator
+- **Documentation**: Swagger/OpenAPI
+- **Testing**: Jest
+
+## Description
+
+ATW Timesheet API built with NestJS framework, providing robust authentication and user management capabilities.
+
+## Prerequisites
+
+- Node.js (v18 or higher)
+- PostgreSQL database
+- npm or yarn package manager
+
+## Environment Setup
+
+1. **Clone the repository**
+
+```bash
+git clone <repository-url>
+cd atw-timesheet/apps/api
+```
+
+2. **Install dependencies**
+
+```bash
+npm install
+```
+
+3. **Environment Variables**
+   Create a `.env` file in the root directory:
+
+```env
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/atw_timesheet?schema=public"
+
+# JWT Configuration
+JWT_SECRET="your-super-secret-jwt-key"
+JWT_EXPIRES_IN="1h"
+
+# Application
+PORT=8000
+```
+
+4. **Database Setup**
+
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Run database migrations
+npx prisma migrate deploy
+
+# (Optional) Seed the database
+npx prisma db seed
+```
+
+## Running the Application
+
+```bash
+# Development mode with hot reload
+npm run start:dev
+
+# Production mode
+npm run start:prod
+
+# Debug mode
+npm run start:debug
+```
+
+The API will be available at `http://localhost:8000`
+
+## API Documentation
+
+Once the application is running, visit:
+
+- **Swagger UI**: `http://localhost:8000/api`
+- **API Endpoints**: `http://localhost:8000`
+
+## Testing
+
+```bash
+# Unit tests
+npm run test
+
+# Watch mode for tests
+npm run test:watch
+
+# Test coverage
+npm run test:cov
+
+# E2E tests
+npm run test:e2e
+```
+
+## API Endpoints
+
+### Authentication
+
+- `POST /auth/register` - Register a new user
+- `POST /auth/login` - Login user
+- `POST /auth/forgot-password` - Request password reset
+- `POST /auth/reset-password` - Reset password with token
+- `GET /auth/profile` - Get user profile (protected)
+
+### User Management
+
+- `GET /users` - Get all users (Admin/Manager only)
+- `GET /users/:id` - Get user by ID (Admin/Manager only)
+- `PUT /users/:id/role` - Update user role (Admin only)
+- `PUT /users/:id/activate` - Activate user (Admin only)
+- `PUT /users/:id/deactivate` - Deactivate user (Admin only)
+
+## User Roles
+
+- **USER**: Basic access level (default for new users)
+- **MANAGER**: Can view and manage users
+- **ADMIN**: Full access, can promote users and manage all aspects
+
+## Database Schema
+
+The application uses the following main entities:
+
+- **User**: Stores user information, credentials, and roles
+- **Domain**: Predefined domains for user registration
+- **Role**: Enum defining user permission levels
+
+## Development
+
+### Project Structure
+
+```
+src/
+├── auth/           # Authentication module
+├── users/          # User management module
+├── prisma/         # Database service
+├── generated/      # Prisma generated client
+└── main.ts         # Application entry point
+```
+
+### Adding New Features
+
+1. Create a new module: `nest g module feature-name`
+2. Add service: `nest g service feature-name`
+3. Add controller: `nest g controller feature-name`
+4. Update database schema in `prisma/schema.prisma`
+5. Run migration: `npx prisma migrate dev`
+
+## Troubleshooting
+
+### Common Issues
+
+- **Database connection**: Verify DATABASE_URL in .env
+- **JWT errors**: Check JWT_SECRET is set
+- **Migration issues**: Run `npx prisma migrate reset`
+- **Port conflicts**: Change PORT in .env file
+
+---
+
+# Authentification API – Documentation Complète
+
+## Stack Technique
+
+- **Framework** : NestJS (TypeScript)
+- **ORM** : Prisma
+- **Base de données** : PostgreSQL
+- **Sécurité** : JWT, bcrypt, Helmet, CORS, Throttler
+- **Email** : @nestjs-modules/mailer, Nodemailer, Handlebars
+- **Tests** : Jest, Supertest (e2e)
+
+## Fonctionnalités
+
+- Inscription (register)
+- Connexion (login)
+- Rafraîchissement de token (refresh)
+- Déconnexion (logout)
+- Mot de passe oublié (forgot-password)
+- Réinitialisation du mot de passe (reset-password)
+- Validation et logs sur toutes les actions critiques
+
+## Sécurité
+
+- Hashage des mots de passe avec bcrypt
+- JWT pour l’authentification (access/refresh tokens)
+- Middleware Helmet, CORS, Throttler
+- Validation forte des DTOs (class-validator)
+- Logs professionnels sur toutes les actions sensibles
+
+## Variables d’environnement
+
+Voir `.env.example` pour la configuration complète :
+
+```
+DATABASE_URL=postgresql://postgres:password@localhost:5432/stage?schema=public
+SMTP_HOST=live.smtp.mailtrap.io
+SMTP_PORT=587
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_pass
+SMTP_FROM=adresse_autorisee@mailtrap.io
+JWT_SECRET=your_jwt_secret
+```
+
+## Endpoints
+
+### POST /auth/register
+
+- **Payload** : `{ email, fullName, username, password }`
+- **Réponse** : `{ user, tokens }`
+
+### POST /auth/login
+
+- **Payload** : `{ emailOrUsername, password }`
+- **Réponse** : `{ user, tokens }`
+
+### POST /auth/forgot-password
+
+- **Payload** : `{ email }`
+- **Réponse** : `{ message }`
+
+### POST /auth/reset-password
+
+- **Payload** : `{ token, newPassword }`
+- **Réponse** : `{ message }`
+
+### POST /auth/refresh
+
+- **Payload** : `{ refreshToken }`
+- **Réponse** : `{ accessToken, refreshToken }`
+
+### POST /auth/logout
+
+- **Header** : `Authorization: Bearer <accessToken>`
+- **Réponse** : `204 No Content`
+
+## Exemples d’utilisation (Windows/cmd)
+
+```cmd
+curl -X POST http://localhost:8000/auth/register -H "Content-Type: application/json" -d "{\"email\":\"testuser@example.com\",\"fullName\":\"Test User\",\"username\":\"testuser\",\"password\":\"Password1!\"}"
+curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d "{\"emailOrUsername\":\"testuser\",\"password\":\"Password1!\"}"
+curl -X POST http://localhost:8000/auth/forgot-password -H "Content-Type: application/json" -d "{\"email\":\"testuser@example.com\"}"
+curl -X POST http://localhost:8000/auth/reset-password -H "Content-Type: application/json" -d "{\"token\":\"<TOKEN>\",\"newPassword\":\"NewPassword1!\"}"
+curl -X POST http://localhost:8000/auth/refresh -H "Content-Type: application/json" -d "{\"refreshToken\":\"<REFRESH_TOKEN>\"}"
+curl -X POST http://localhost:8000/auth/logout -H "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+## Tests
+
+- Lancer tous les tests : `npm run test:e2e` dans `apps/api/`
+- Les tests couvrent : inscription, connexion, refresh, reset password, etc.
+- Fichier de test principal : `apps/api/test/auth.e2e-spec.ts`
+
+## Configuration Email
+
+- Utilise Mailtrap pour le développement (adresse d’expéditeur autorisée obligatoire)
+- En production : utiliser un vrai SMTP (SendGrid, Mailgun, etc.) avec un domaine validé
+
+## Limitations & TODO
+
+- Pas de gestion multi-facteurs (MFA)
+- Pas de gestion avancée des rôles (hors ADMIN/EMPLOYEE)
+- Améliorer la couverture de tests unitaires
+
+## Liens utiles
+
+- [NestJS](https://docs.nestjs.com/)
+- [Prisma](https://www.prisma.io/docs/)
+- [Mailtrap](https://mailtrap.io/)
+- [Jest](https://jestjs.io/)
+
+---
+
+Pour toute question, voir le code ou contacter le mainteneur.
+
+## License
+
+This project is [MIT licensed](LICENSE).
+
+---
+
+## 📁 Fichiers clés & extraits importants
+
+- [`src/auth/auth.service.ts`](../src/auth/auth.service.ts) : logique principale d’authentification
+  - Méthodes : [`register`](../src/auth/auth.service.ts#L23), [`login`](../src/auth/auth.service.ts#L61), [`forgotPassword`](../src/auth/auth.service.ts#L108), [`resetPassword`](../src/auth/auth.service.ts#L137)
+- [`src/mail/mail.module.ts`](../src/mail/mail.module.ts) : configuration du module mailer (champ `from` dynamique)
+- [`test/auth.e2e-spec.ts`](../test/auth.e2e-spec.ts) : tests d’intégration/e2e de l’authentification
+- [`prisma/schema.prisma`](../prisma/schema.prisma) : schéma de la base de données (modèle User, champs `resetToken`, etc.)
+
+### Exemple de méthode `register` ([auth.service.ts](../src/auth/auth.service.ts))
+
+```ts
+async register(registerDto: RegisterDto): Promise<{ user: UserResponse; tokens: { accessToken: string; refreshToken: string } }> {
+  // Vérifie si l'utilisateur existe déjà
+  const existingUser = await this.prisma.user.findFirst({
+    where: {
+      OR: [{ email }, ...(username ? [{ username }] : [])],
+    },
+  });
+  if (existingUser) throw new ConflictException('User with this email or username already exists');
+  // Hash le mot de passe
+  const hashedPassword = await bcrypt.hash(password, 12);
+  // Crée l'utilisateur
+  const user = await this.prisma.user.create({ ... });
+  // Génère et stocke les tokens
+  const tokens = await this.generateTokens(user);
+  // ...
+  return { user, tokens };
+}
+```
+
+### Extrait de configuration mailer ([mail.module.ts](../src/mail/mail.module.ts))
+
+```ts
+MailerModule.forRootAsync({
+  useFactory: async () => ({
+    // ...
+    from: process.env.SMTP_FROM,
+    // ...
+  }),
+});
+```
+
+### Test d’intégration forgot-password ([auth.e2e-spec.ts](../test/auth.e2e-spec.ts))
+
+```ts
+it('should request password reset', async () => {
+  await request(server)
+    .post('/auth/forgot-password')
+    .send({ email: user.email })
+    .expect(200)
+    .expect((res) => {
+      expect(res.body.message).toMatch(/reset link has been sent/i);
+    });
+});
+```
+
+### Modèle User (prisma/schema.prisma)
+
+```prisma
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  username         String?  @unique
+  password         String
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  // ...
+}
+```
