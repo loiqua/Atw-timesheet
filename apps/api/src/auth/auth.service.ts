@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { Role } from '../../../../generated/prisma';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ForgotPasswordDto,
@@ -39,6 +40,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<{
@@ -227,8 +229,8 @@ export class AuthService {
       },
     });
 
-    // TODO: Send email with reset token
-    // In a real application, you would send an email here
+    // Send email with reset token
+    await this.mailService.sendResetPasswordEmail(email, resetToken);
     this.logger.verbose(`Reset token for ${email}: ${resetToken}`);
 
     this.logger.log(
