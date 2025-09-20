@@ -18,6 +18,10 @@ export class RegisterDto {
   @MaxLength(50)
   fullName: string;
 
+  @IsOptional()
+  @IsString()
+  adminKey?: string;
+
   @IsString()
   @IsOptional()
   @MaxLength(30)

@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
@@ -41,13 +42,15 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<{
     user: UserResponse;
     tokens: { accessToken: string; refreshToken: string };
   }> {
-    const { email, fullName, username, password, domainId } = registerDto;
+    const { email, fullName, username, password, domainId, adminKey } =
+      registerDto;
     this.logger.log(`Register attempt: email=${email}, username=${username}`);
 
     // Check if user already exists
@@ -81,10 +84,19 @@ export class AuthService {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Check if this is the first user (should be ADMIN)
-
-    const userCount = await this.prisma.user.count();
-    const role = userCount === 0 ? Role.ADMIN : Role.EMPLOYEE;
+    // Determine user role based on adminKey
+    let role: Role = Role.EMPLOYEE;
+    if (adminKey) {
+      const adminRegistrationKey = this.configService.get<string>(
+        'ADMIN_REGISTRATION_KEY',
+      );
+      if (adminKey === adminRegistrationKey) {
+        role = Role.ADMIN;
+      } else {
+        this.logger.warn(`Register failed: invalid admin key provided`);
+        throw new UnauthorizedException('Invalid admin key');
+      }
+    }
 
     // Create user
 

@@ -67,22 +67,24 @@ DATABASE_URL="postgresql://username:password@localhost:5432/atw_timesheet?schema
 JWT_SECRET="your-super-secret-jwt-key"
 JWT_EXPIRES_IN="1h"
 
+# Admin Registration
+ADMIN_REGISTRATION_KEY="your-super-secret-and-long-key-here"
+
 # Application
 PORT=8000
 ```
 
-4. **Database Setup**
+## Admin User Registration
+
+To register the first admin user, you need to provide a secret admin key during registration:
 
 ```bash
-# Generate Prisma client
-npx prisma generate
-
-# Run database migrations
-npx prisma migrate deploy
-
-# (Optional) Seed the database
-npx prisma db seed
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"AdminPassword123!","fullName":"Jane Admin","adminKey":"your-secret-key"}'
 ```
+
+**Note**: Replace `"your-secret-key"` with the actual `ADMIN_REGISTRATION_KEY` from your `.env` file.
 
 ## Running the Application
 
@@ -126,7 +128,7 @@ npm run test:e2e
 
 ### Authentication
 
-- `POST /auth/register` - Register a new user
+- `POST /auth/register` - Register a new user (optional adminKey for ADMIN role)
 - `POST /auth/login` - Login user
 - `POST /auth/forgot-password` - Request password reset
 - `POST /auth/reset-password` - Reset password with token
@@ -219,7 +221,7 @@ src/
 
 Voir `.env.example` pour la configuration complète :
 
-```
+```env
 DATABASE_URL=postgresql://postgres:password@localhost:5432/stage?schema=public
 SMTP_HOST=live.smtp.mailtrap.io
 SMTP_PORT=587
@@ -227,14 +229,17 @@ SMTP_USER=your_smtp_user
 SMTP_PASS=your_smtp_pass
 SMTP_FROM=adresse_autorisee@mailtrap.io
 JWT_SECRET=your_jwt_secret
+ADMIN_REGISTRATION_KEY=your_admin_registration_key
 ```
 
 ## Endpoints
 
 ### POST /auth/register
 
-- **Payload** : `{ email, fullName, username, password }`
+- **Payload** : `{ email, fullName, username, password, adminKey? }`
 - **Réponse** : `{ user, tokens }`
+
+**Note**: To register an admin user, include the `adminKey` field with the secret key from your environment variables. Without the key, users are registered with the default `EMPLOYEE` role.
 
 ### POST /auth/login
 
@@ -265,11 +270,9 @@ JWT_SECRET=your_jwt_secret
 
 ```cmd
 curl -X POST http://localhost:8000/auth/register -H "Content-Type: application/json" -d "{\"email\":\"testuser@example.com\",\"fullName\":\"Test User\",\"username\":\"testuser\",\"password\":\"Password1!\"}"
-curl -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" -d "{\"emailOrUsername\":\"testuser\",\"password\":\"Password1!\"}"
-curl -X POST http://localhost:8000/auth/forgot-password -H "Content-Type: application/json" -d "{\"email\":\"testuser@example.com\"}"
-curl -X POST http://localhost:8000/auth/reset-password -H "Content-Type: application/json" -d "{\"token\":\"<TOKEN>\",\"newPassword\":\"NewPassword1!\"}"
-curl -X POST http://localhost:8000/auth/refresh -H "Content-Type: application/json" -d "{\"refreshToken\":\"<REFRESH_TOKEN>\"}"
-curl -X POST http://localhost:8000/auth/logout -H "Authorization: Bearer <ACCESS_TOKEN>"
+
+# Register admin user
+curl -X POST http://localhost:8000/auth/register -H "Content-Type: application/json" -d "{\"email\":\"admin@example.com\",\"fullName\":\"Admin User\",\"username\":\"admin\",\"password\":\"AdminPassword123!\",\"adminKey\":\"your-secret-key\"}"
 ```
 
 ## Tests
@@ -285,9 +288,8 @@ curl -X POST http://localhost:8000/auth/logout -H "Authorization: Bearer <ACCESS
 
 ## Limitations & TODO
 
-- Pas de gestion multi-facteurs (MFA)
-- Pas de gestion avancée des rôles (hors ADMIN/EMPLOYEE)
-- Améliorer la couverture de tests unitaires
+- Gestion avancée des rôles avec attributions temporaires (voir module `roles`)
+- Système de clé secrète pour l'inscription d'administrateurs
 
 ## Liens utiles
 
