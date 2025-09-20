@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -19,10 +20,13 @@ import { UsersModule } from './users/users.module';
     ]),
     ConfigModule.forRoot({
       isGlobal: true,
+      // Charge l'env depuis apps/api/.env ET la racine du repo ../../.env
+      envFilePath: ['.env', '../../.env'],
     }),
     PrismaModule,
     AuthModule,
     UsersModule,
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [

@@ -340,7 +340,7 @@ export class AuthService {
   ): Promise<{ accessToken: string; refreshToken: string }> {
     this.logger.log(`Refresh token attempt: userId=${userId}`);
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.refreshToken) {
+    if (!user || !user?.refreshToken) {
       this.logger.warn(
         `Refresh token failed: user not found or no refreshToken (userId=${userId})`,
       );

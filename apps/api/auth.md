@@ -142,11 +142,88 @@ npm run test:e2e
 - `PUT /users/:id/activate` - Activate user (Admin only)
 - `PUT /users/:id/deactivate` - Deactivate user (Admin only)
 
+### Role Management (Roles module)
+
+- `POST /roles/users/:userId/assignments` — Assign a role to a user (Admin only)
+- `GET /roles/assignments` — List role assignments with pagination and filters (Admin only)
+- `GET /roles/users/:userId/assignments` — Get active role assignments for a user (Admin only)
+- `PATCH /roles/assignments/:assignmentId` — Update a role assignment (dates, scope, isActive) (Admin only)
+- `DELETE /roles/assignments/:assignmentId` — Revoke a role assignment (Admin only)
+
+Notes:
+- Requires `Authorization: Bearer <accessToken>` of a user with `ADMIN` role.
+- `:userId` and `:assignmentId` must be valid UUID v4 (server returns 400 otherwise).
+- Date/time fields are ISO 8601 (timezone-aware). Backend stores `timestamptz` in UTC.
+- Overlapping active assignments are prevented for identical `(userId, role, scope)`.
+
+Pagination & Filters for `GET /roles/assignments`:
+- Query params: `page` (default 1), `pageSize` (default 20), `userId`, `role` (ADMIN|MANAGER|EMPLOYEE), `active` (true|false)
+- Response shape: `{ data: RoleAssignment[], total: number, page: number, pageSize: number }`
+
+DB Model: see [`prisma/schema.prisma`](../prisma/schema.prisma), model `RoleAssignment` (composite index on `[userId, role, scope]`).
+
+Swagger: open `http://localhost:8000/api` and use the "Role Management" tag.
+
+#### cURL examples (Windows/cmd)
+
+Set variables (optional):
+```cmd
+set TOKEN=<ACCESS_TOKEN_ADMIN>
+set USER_ID=<USER_UUID>
+```
+
+Assign a role to a user:
+```cmd
+curl -X POST http://localhost:8000/roles/users/%USER_ID%/assignments ^
+  -H "Authorization: Bearer %TOKEN%" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"role\":\"MANAGER\",\"scope\":\"projectA\",\"validFrom\":\"2025-01-01T00:00:00Z\"}"
+```
+
+List assignments with pagination and filters:
+```cmd
+curl -X GET "http://localhost:8000/roles/assignments?page=1&pageSize=10&userId=%USER_ID%&role=MANAGER&active=true" ^
+  -H "Authorization: Bearer %TOKEN%"
+```
+
+Get active assignments for a user:
+```cmd
+curl -X GET http://localhost:8000/roles/users/%USER_ID%/assignments ^
+  -H "Authorization: Bearer %TOKEN%"
+```
+
+Update an assignment (e.g., add an end date):
+```cmd
+set ASSIGNMENT_ID=<ASSIGNMENT_UUID>
+curl -X PATCH http://localhost:8000/roles/assignments/%ASSIGNMENT_ID% ^
+  -H "Authorization: Bearer %TOKEN%" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"validTo\":\"2025-12-31T23:59:59Z\"}"
+```
+
+Revoke an assignment:
+```cmd
+curl -X DELETE http://localhost:8000/roles/assignments/%ASSIGNMENT_ID% ^
+  -H "Authorization: Bearer %TOKEN%"
+```
+
+Error cases to expect:
+- 400 Bad Request: invalid UUID, invalid date range (`validFrom > validTo`), or overlapping active assignment
+- 401 Unauthorized: missing/invalid Bearer token
+- 403 Forbidden: user is not ADMIN
+- 404 Not Found: target user or assignment does not exist
+
+Source references:
+- Controller: [`apps/api/src/roles/roles.controller.ts`](./src/roles/roles.controller.ts)
+- Service: [`apps/api/src/roles/roles.service.ts`](./src/roles/roles.service.ts)
+- DTOs: [`apps/api/src/roles/dto`](./src/roles/dto)
+
 ## User Roles
 
 - **USER**: Basic access level (default for new users)
 - **MANAGER**: Can view and manage users
 - **ADMIN**: Full access, can promote users and manage all aspects
+- **INFO_IT**: Technical/IT role (access management, support)
 
 ## Database Schema
 
@@ -154,7 +231,7 @@ The application uses the following main entities:
 
 - **User**: Stores user information, credentials, and roles
 - **Domain**: Predefined domains for user registration
-- **Role**: Enum defining user permission levels
+- **Role**: Enum defining user permission levels (ADMIN, MANAGER, EMPLOYEE, INFO_IT)
 
 ## Development
 
@@ -176,6 +253,48 @@ src/
 3. Add controller: `nest g controller feature-name`
 4. Update database schema in `prisma/schema.prisma`
 5. Run migration: `npx prisma migrate dev`
+
+### Scope-based authorization (per-project or per-team)
+
+Some business endpoints may require a scoped role (e.g., a manager of a specific project). Use the provided decorator and guard:
+
+- Decorator: `RequireScopedRole({ role, scopeParam })`
+- Guard: `ScopeGuard`
+
+How it works:
+- The guard checks that the authenticated user has an active `RoleAssignment` with the required `role`, matching the scope value read from the route param named by `scopeParam`, and within valid date range (`validFrom` <= now < `validTo` or `validTo` is null), and `isActive = true`.
+
+Usage example in a controller:
+```ts
+// src/projects/projects.controller.ts
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ScopeGuard } from '../auth/guards/scope.guard';
+import { RequireScopedRole } from '../auth/decorators/require-scoped-role.decorator';
+import { Role } from '../../generated/prisma';
+
+@Controller('projects')
+@UseGuards(JwtAuthGuard, ScopeGuard)
+export class ProjectsController {
+  @Get(':projectId/overview')
+  @RequireScopedRole({ role: Role.MANAGER, scopeParam: 'projectId' })
+  getProjectOverview(@Param('projectId') projectId: string) {
+    // only managers of this projectId can access
+    return { projectId };
+  }
+}
+```
+
+Notes:
+- Combine with `@Roles(Role.ADMIN)` if both global admin and scoped managers should be allowed (you can short-circuit the guard when `ADMIN`).
+- Ensure your routes pass the scope identifier in `@Param('...')` with the exact `scopeParam` name.
+- `RoleAssignment` overlaps are prevented by the service; use PATCH/DELETE endpoints to end or revoke roles.
+
+Migration note for new role `INFO_IT`:
+```bash
+npx prisma generate --schema prisma/schema.prisma
+npx prisma migrate dev -n add-info-it-role --schema prisma/schema.prisma
+```
 
 ## Troubleshooting
 
