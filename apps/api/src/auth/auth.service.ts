@@ -29,6 +29,7 @@ type UserResponse = {
   role: Role;
   isActive: boolean;
   domainId: string | null;
+  domain?: { id: string; name: string; slug: string } | null;
   lastLogin: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -70,14 +71,17 @@ export class AuthService {
       );
     }
 
-    // Check if domain exists if provided
+    // Check if domain exists if provided and enforce rules
+    let selectedDomain: { id: string; slug: string } | null = null;
     if (domainId) {
       const domain = await this.prisma.domain.findUnique({
         where: { id: domainId },
+        select: { id: true, slug: true },
       });
       if (!domain) {
         throw new NotFoundException('Domain not found');
       }
+      selectedDomain = domain;
     }
 
     // Hash password
@@ -86,6 +90,11 @@ export class AuthService {
 
     // Determine user role based on adminKey
     let role: Role = Role.EMPLOYEE;
+    // If domain is 'direction', require adminKey
+    if (selectedDomain?.slug === 'direction' && !adminKey) {
+      this.logger.warn(`Register failed: admin key required for Direction domain`);
+      throw new UnauthorizedException('Admin key required for Direction domain');
+    }
     if (adminKey) {
       const adminRegistrationKey = this.configService.get<string>(
         'ADMIN_REGISTRATION_KEY',
@@ -117,6 +126,7 @@ export class AuthService {
         role: true,
         isActive: true,
         domainId: true,
+        domain: { select: { id: true, name: true, slug: true } },
         lastLogin: true,
         createdAt: true,
         updatedAt: true,
@@ -159,6 +169,7 @@ export class AuthService {
         role: true,
         isActive: true,
         domainId: true,
+        domain: { select: { id: true, name: true, slug: true } },
         lastLogin: true,
         createdAt: true,
         updatedAt: true,
@@ -309,6 +320,7 @@ export class AuthService {
         role: true,
         isActive: true,
         domainId: true,
+        domain: { select: { id: true, name: true, slug: true } },
         lastLogin: true,
         createdAt: true,
         updatedAt: true,

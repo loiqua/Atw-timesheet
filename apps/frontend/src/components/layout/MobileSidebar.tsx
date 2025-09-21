@@ -1,7 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { Folder } from "lucide-react";
 import { NavLinks } from "./NavLinks";
-import ClientLogoutButton from "./ClientLogoutButton";
+import JwtLogoutButton from "./JwtLogoutButton";
 
 const MobileSidebar = () => {
   return (
@@ -24,7 +26,7 @@ const MobileSidebar = () => {
       </div>
       <NavLinks />
       <div className="p-4 mt-auto border-t border-blue-700/50">
-        <ClientLogoutButton />
+        <JwtLogoutButton />
       </div>
     </aside>
   );

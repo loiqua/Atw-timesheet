@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
+import { DomainsModule } from './domains/domains.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RolesModule } from './roles/roles.module';
     AuthModule,
     UsersModule,
     RolesModule,
+    DomainsModule,
   ],
   controllers: [AppController],
   providers: [

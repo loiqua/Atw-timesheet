@@ -44,6 +44,5 @@ export class RegisterDto {
   password: string;
 
   @IsUUID()
-  @IsOptional()
-  domainId?: string;
+  domainId: string;
 }

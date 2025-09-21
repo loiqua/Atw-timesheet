@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Folder } from "lucide-react";
 import { NavLinks } from "./NavLinks";
-import ClientLogoutButton from "./ClientLogoutButton";
+import JwtLogoutButton from "./JwtLogoutButton";
 
 const Sidebar = () => {
   return (
@@ -24,7 +24,7 @@ const Sidebar = () => {
       </div>
       <NavLinks />
       <div className="p-4 mt-auto border-t border-blue-700/50">
-        <ClientLogoutButton />
+        <JwtLogoutButton />
       </div>
     </aside>
   );

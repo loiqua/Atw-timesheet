@@ -336,6 +336,9 @@ npx prisma migrate dev -n add-info-it-role --schema prisma/schema.prisma
 - Validation forte des DTOs (class-validator)
 - Logs professionnels sur toutes les actions sensibles
 
+- Stockage des refresh tokens hachés (bcrypt) côté base de données
+- Révocation automatique des refresh tokens lors d’une réinitialisation de mot de passe (reset)
+
 ## Variables d’environnement
 
 Voir `.env.example` pour la configuration complète :
@@ -359,6 +362,16 @@ ADMIN_REGISTRATION_KEY=your_admin_registration_key
 - **Réponse** : `{ user, tokens }`
 
 **Note**: To register an admin user, include the `adminKey` field with the secret key from your environment variables. Without the key, users are registered with the default `EMPLOYEE` role.
+
+Règles spécifiques de domaine:
+
+- Si un `domainId` est fourni, il doit référencer un domaine existant (sinon `404 Not Found`).
+- Si le domaine sélectionné a le `slug` égal à `direction`, la `adminKey` est obligatoire. En l’absence d’une clé valide, l’inscription échoue (`401 Unauthorized`).
+
+Références code:
+
+- Validation/règles dans `AuthService.register`: [`apps/api/src/auth/auth.service.ts`](../src/auth/auth.service.ts)
+- Modèle `Domain` et champ `slug`: [`prisma/schema.prisma`](../prisma/schema.prisma)
 
 ### POST /auth/login
 
@@ -384,6 +397,27 @@ ADMIN_REGISTRATION_KEY=your_admin_registration_key
 
 - **Header** : `Authorization: Bearer <accessToken>`
 - **Réponse** : `204 No Content`
+
+Cycle de vie des tokens:
+
+- Lors du login/refresh: le `refreshToken` est regénéré et stocké côté serveur sous forme hachée (bcrypt).
+- Lors du reset password: le `refreshToken` enregistré est annulé (révoqué), forçant une reconnexion.
+
+Extrait (simplifié) `AuthService.refreshTokens`:
+
+```ts
+// apps/api/src/auth/auth.service.ts
+async refreshTokens(userId: string, refreshToken: string) {
+  const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  if (!user || !user.refreshToken) throw new UnauthorizedException('Access Denied');
+  const isValid = await bcrypt.compare(refreshToken, user.refreshToken);
+  if (!isValid) throw new UnauthorizedException('Invalid refresh token');
+  const tokens = await this.generateTokens(user);
+  const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 12);
+  await this.prisma.user.update({ where: { id: user.id }, data: { refreshToken: hashedRefreshToken } });
+  return tokens;
+}
+```
 
 ## Exemples d’utilisation (Windows/cmd)
 
@@ -434,6 +468,26 @@ This project is [MIT licensed](LICENSE).
 - [`src/mail/mail.module.ts`](../src/mail/mail.module.ts) : configuration du module mailer (champ `from` dynamique)
 - [`test/auth.e2e-spec.ts`](../test/auth.e2e-spec.ts) : tests d’intégration/e2e de l’authentification
 - [`prisma/schema.prisma`](../prisma/schema.prisma) : schéma de la base de données (modèle User, champs `resetToken`, etc.)
+
+- Guards & Décorateurs:
+  - [`src/auth/guards/jwt-auth.guard.ts`](../src/auth/guards/jwt-auth.guard.ts) — garde JWT Passport
+  - [`src/auth/guards/roles.guard.ts`](../src/auth/guards/roles.guard.ts) — RBAC simple par rôle global
+  - [`src/auth/guards/scope.guard.ts`](../src/auth/guards/scope.guard.ts) — contrôle des rôles « scopés » (projet/équipe)
+  - [`src/auth/decorators/roles.decorator.ts`](../src/auth/decorators/roles.decorator.ts) — décorateur `@Roles(...)`
+  - [`src/auth/decorators/require-scoped-role.decorator.ts`](../src/auth/decorators/require-scoped-role.decorator.ts) — décorateur `@RequireScopedRole({ role, scopeParam })`
+
+- Stratégie JWT:
+  - [`src/auth/strategies/jwt.strategy.ts`](../src/auth/strategies/jwt.strategy.ts)
+
+- DTOs Auth:
+  - [`src/auth/dto/register.dto.ts`](../src/auth/dto/register.dto.ts)
+  - [`src/auth/dto/login.dto.ts`](../src/auth/dto/login.dto.ts)
+  - [`src/auth/dto/forgot-password.dto.ts`](../src/auth/dto/forgot-password.dto.ts)
+  - [`src/auth/dto/reset-password.dto.ts`](../src/auth/dto/reset-password.dto.ts)
+  - [`src/auth/dto/refresh-logout.dto.ts`](../src/auth/dto/refresh-logout.dto.ts)
+
+- Contrôleur Auth:
+  - [`src/auth/auth.controller.ts`](../src/auth/auth.controller.ts)
 
 ### Exemple de méthode `register` ([auth.service.ts](../src/auth/auth.service.ts))
 

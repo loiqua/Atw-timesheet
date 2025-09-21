@@ -24,7 +24,7 @@ export const domainConfig: Record<Domain, { icon: LucideIcon; color: string }> =
       icon: ClipboardList,
       color: "text-yellow-500",
     },
-    admin: {
+    direction: {
       icon: UserCog,
       color: "text-slate-500",
     },

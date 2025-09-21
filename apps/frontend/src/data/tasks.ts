@@ -2,7 +2,7 @@ export type Domain =
   | "info"
   | "call"
   | "enqueteur"
-  | "admin"
+  | "direction"
   | "manager"
   | "compta"
   | "formateur";
