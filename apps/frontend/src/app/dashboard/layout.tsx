@@ -1,9 +1,16 @@
-import DashboardLayout from '@/components/layout/DashboardLayout';
+"use client";
+
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 interface LayoutProps {
   readonly children: React.ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <AuthGuard>
+      <DashboardLayout>{children}</DashboardLayout>
+    </AuthGuard>
+  );
 }

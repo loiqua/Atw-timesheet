@@ -6,7 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  //output   = "../generated/prisma"
 }
 
 datasource db {
@@ -19,6 +19,7 @@ enum Role {
   ADMIN
   MANAGER
   EMPLOYEE
+  INFO_IT
 }
 
 enum TaskStatus {
@@ -50,13 +51,22 @@ model User {
   isActive  Boolean  @default(true)
   lastLogin DateTime? @db.Timestamptz(6)
 
+  // Refresh token hash (sécurité)
+  refreshToken String?
+  
+  // Password reset fields
+  resetToken       String?   
+  resetTokenExpiry DateTime? @db.Timestamptz(6)
+
   tasks         Task[]
   presences     Presence[]
   managedDomains ManagerDomain[]
+  roleAssignments RoleAssignment[]
   domainId      String? // domaine principal (optionnel)
   domain        Domain? @relation(fields: [domainId], references: [id])
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 }
 
 model Domain {
@@ -83,6 +93,17 @@ model ManagerDomain {
   @@index([domainId])
 }
 
+model Location {
+  id        String   @id @default(uuid())
+  taskId    String   @unique
+  latitude  Float
+  longitude Float
+  address   String?
+
+  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+}
+
 model Task {
   id          String   @id @default(uuid())
   userId      String
@@ -101,17 +122,6 @@ model Task {
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
-}
-
-model Location {
-  id        String   @id @default(uuid())
-  taskId    String   @unique
-  latitude  Float
-  longitude Float
-  address   String?
-
-  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
 }
 
 model Report {
@@ -134,4 +144,25 @@ model Presence {
   user     User @relation(fields: [userId], references: [id])
 
   @@unique([userId, date]) // 1 présence par jour et par user
+}
+
+model RoleAssignment {
+  id        String   @id @default(uuid())
+  userId    String
+  role      Role
+  scope     String?  // ex: projetX, équipeA, null pour global
+  validFrom DateTime @db.Timestamptz(6)
+  validTo   DateTime? @db.Timestamptz(6)
+  isActive  Boolean  @default(true)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([role])
+  @@index([validFrom])
+  @@index([validTo])
+  @@index([userId, role, scope])
 }

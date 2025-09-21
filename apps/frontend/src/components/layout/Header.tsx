@@ -1,15 +1,19 @@
+"use client";
+
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"; // Assuming shadcn/ui sheet is set up
 import { Menu } from "lucide-react";
-import Image from "next/image";
 import MobileSidebar from "./MobileSidebar";
+import { useAuthStore } from "@/lib/auth-store";
+import { toInitials, roleLabel } from "@/lib/utils";
 
 const Header = () => {
+  const user = useAuthStore((s) => s.user);
   return (
     <header className="flex items-center justify-between lg:justify-end h-16 px-4 lg:px-8 bg-white border-b">
       <div className="lg:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <button 
+            <button
               type="button"
               aria-label="Ouvrir le menu de navigation"
               className="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
@@ -27,17 +31,25 @@ const Header = () => {
         </Sheet>
       </div>
       <div className="flex items-center gap-4">
-        <div>
-          <p className="font-semibold">Arthstorm Name</p>
-          <p className="text-xs text-gray-500">info</p>
+        <div
+          className="h-10 w-10 rounded-full bg-blue-600 text-white grid place-items-center font-semibold"
+          aria-label="Avatar utilisateur"
+        >
+          {toInitials(user?.fullName ?? user?.username ?? user?.email ?? "")}
         </div>
-        <Image
-          src="https://i.pravatar.cc/40?u=a042581f4e29026704d"
-          alt="User avatar"
-          width={40}
-          height={40}
-          className="rounded-full"
-        />
+        <div className="min-w-0">
+          <p className="font-semibold truncate">
+            {user?.username ?? user?.email ?? "Utilisateur"}
+          </p>
+          <p className="text-xs text-gray-500 truncate">
+            {[
+              user?.role ? roleLabel(user.role) : undefined,
+              user?.domain?.name ?? undefined,
+            ]
+              .filter(Boolean)
+              .join(" | ")}
+          </p>
+        </div>
       </div>
     </header>
   );

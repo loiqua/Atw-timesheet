@@ -1,13 +1,20 @@
-import Link from 'next/link';
-import { Folder } from 'lucide-react';
-import { NavLinks } from './NavLinks';
-import ClientLogoutButton from './ClientLogoutButton';
+import Link from "next/link";
+import { Folder } from "lucide-react";
+import { NavLinks } from "./NavLinks";
+import JwtLogoutButton from "./JwtLogoutButton";
 
 const Sidebar = () => {
   return (
-    <aside aria-label="Menu de navigation" className="hidden lg:flex flex-col w-64 bg-blue-800 text-white h-dvh fixed shadow-lg">
+    <aside
+      aria-label="Menu de navigation"
+      className="hidden lg:flex flex-col w-64 bg-blue-800 text-white h-dvh fixed shadow-lg"
+    >
       <div className="p-6 border-b border-blue-700/50">
-        <Link href="/dashboard" className="flex items-center gap-3" aria-label="Tableau de bord">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-3"
+          aria-label="Tableau de bord"
+        >
           <Folder className="h-8 w-8 text-yellow-400" />
           <div>
             <h1 className="text-xl font-bold">ATW</h1>
@@ -17,7 +24,7 @@ const Sidebar = () => {
       </div>
       <NavLinks />
       <div className="p-4 mt-auto border-t border-blue-700/50">
-        <ClientLogoutButton />
+        <JwtLogoutButton />
       </div>
     </aside>
   );
