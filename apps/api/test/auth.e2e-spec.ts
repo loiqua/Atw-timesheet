@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request, { Response } from 'supertest';
 import { AppModule } from './../src/app.module';
+import { PrismaService } from './../src/prisma/prisma.service';
 
 interface AuthTokens {
   accessToken: string;
@@ -37,11 +38,13 @@ describe('Auth e2e', () => {
   let accessToken: string;
   let refreshToken: string;
   let userId: string;
+  let domainId: string;
 
+  const SUFFIX = Date.now();
   const user = {
-    email: 'testuser@example.com',
+    email: `testuser+${SUFFIX}@example.com`,
     fullName: 'Test User',
-    username: 'testuser',
+    username: `testuser_${SUFFIX}`,
     password: 'Password1!',
   };
 
@@ -53,6 +56,13 @@ describe('Auth e2e', () => {
     await app.init();
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     server = app.getHttpServer();
+
+    // Create a test domain to attach to the user (guards future requirements)
+    const prisma = app.get(PrismaService);
+    const d = await prisma.domain.create({
+      data: { name: `Auth E2E ${SUFFIX}`, slug: `auth-e2e-${SUFFIX}` },
+    });
+    domainId = d.id;
   });
 
   afterAll(async () => {
@@ -62,7 +72,7 @@ describe('Auth e2e', () => {
   it('should register a new user', async () => {
     const res: Response = await request(server)
       .post('/auth/register')
-      .send(user)
+      .send({ ...user, domainId })
       .expect(201);
     const body = res.body as RegisterResponse;
     expect(body.user.email).toBe(user.email);

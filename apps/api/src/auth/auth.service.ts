@@ -92,8 +92,12 @@ export class AuthService {
     let role: Role = Role.EMPLOYEE;
     // If domain is 'direction', require adminKey
     if (selectedDomain?.slug === 'direction' && !adminKey) {
-      this.logger.warn(`Register failed: admin key required for Direction domain`);
-      throw new UnauthorizedException('Admin key required for Direction domain');
+      this.logger.warn(
+        `Register failed: admin key required for Direction domain`,
+      );
+      throw new UnauthorizedException(
+        'Admin key required for Direction domain',
+      );
     }
     if (adminKey) {
       const adminRegistrationKey = this.configService.get<string>(

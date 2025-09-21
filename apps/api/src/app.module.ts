@@ -9,6 +9,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { DomainsModule } from './domains/domains.module';
+import { TimesheetModule } from './timesheet/timesheet.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { DomainsModule } from './domains/domains.module';
     UsersModule,
     RolesModule,
     DomainsModule,
+    TimesheetModule,
   ],
   controllers: [AppController],
   providers: [
