@@ -316,9 +316,14 @@ export class TimesheetService {
       include: { user: { select: { id: true, role: true } } },
     });
     if (!task) throw new NotFoundException('Task not found');
+    
     const isOwner = task.userId === userId;
-    const isAdmin = task.user?.role === 'ADMIN';
-    if (!isOwner && !isAdmin) throw new ForbiddenException();
+    
+    // Seul le propriétaire peut éditer (même les admins ne peuvent pas éditer les tâches des autres)
+    if (!isOwner) {
+      throw new ForbiddenException('You can only edit your own tasks');
+    }
+    
     if (task.status !== 'DRAFT') {
       throw new BadRequestException('Only draft tasks can be edited');
     }

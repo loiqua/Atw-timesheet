@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { updateTask, listDomains, type Domain } from '@/features/timesheet/api';
-import type { Task, UpdateTaskInput } from '@/features/timesheet/types';
+import type { Task, UpdateTaskInput, ReportType } from '@/features/timesheet/types';
 
 interface EditTaskDialogProps {
   readonly task: Task | null;
@@ -36,6 +36,15 @@ interface EditTaskFormData {
   title: string;
   description: string;
   domainId: string;
+  reportType: ReportType;
+  reportCategory: string;
+  // Champs structurés pour le rapport
+  objectives: string;
+  results: string;
+  difficulties: string;
+  nextSteps: string;
+  timeSpent: string;
+  resources: string;
 }
 
 export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
@@ -49,6 +58,14 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
     title: '',
     description: '',
     domainId: '',
+    reportType: 'STANDARD',
+    reportCategory: '',
+    objectives: '',
+    results: '',
+    difficulties: '',
+    nextSteps: '',
+    timeSpent: '',
+    resources: '',
   });
 
   const [domains, setDomains] = useState<readonly Domain[]>([]);
@@ -76,10 +93,20 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
   // Initialize form data when task changes
   useEffect(() => {
     if (task) {
+      const reportContent = task.report?.content as Record<string, unknown> || {};
+      
       setFormData({
         title: task.title,
         description: task.description || '',
         domainId: task.domainId,
+        reportType: task.report?.type || 'STANDARD',
+        reportCategory: reportContent.category as string || '',
+        objectives: reportContent.objectives as string || '',
+        results: reportContent.results as string || '',
+        difficulties: reportContent.difficulties as string || '',
+        nextSteps: reportContent.nextSteps as string || '',
+        timeSpent: reportContent.timeSpent as string || '',
+        resources: reportContent.resources as string || '',
       });
     }
   }, [task]);
@@ -103,10 +130,24 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
         throw new Error('Le domaine sélectionné n\'existe pas');
       }
       
+      // Construire le contenu du rapport à partir des champs structurés
+      const reportContent: Record<string, unknown> = {};
+      
+      if (data.reportCategory.trim()) reportContent.category = data.reportCategory.trim();
+      if (data.objectives.trim()) reportContent.objectives = data.objectives.trim();
+      if (data.results.trim()) reportContent.results = data.results.trim();
+      if (data.difficulties.trim()) reportContent.difficulties = data.difficulties.trim();
+      if (data.nextSteps.trim()) reportContent.nextSteps = data.nextSteps.trim();
+      if (data.timeSpent.trim()) reportContent.timeSpent = data.timeSpent.trim();
+      if (data.resources.trim()) reportContent.resources = data.resources.trim();
+
       const updateData: UpdateTaskInput = {
         title: data.title.trim(),
         description: data.description.trim() || undefined,
         domainId: data.domainId,
+        reportType: data.reportType,
+        reportCategory: data.reportCategory.trim() || undefined,
+        reportContent: Object.keys(reportContent).length > 0 ? reportContent : undefined,
       };
       
       return updateTask(task.id, updateData);
@@ -255,6 +296,121 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
                 rows={4}
                 className="w-full px-3 py-2 border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md"
               />
+            </div>
+
+            {/* Section Rapport */}
+            <Separator />
+            
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Rapport de tâche
+              </h3>
+
+              {/* Type de rapport */}
+              <div className="space-y-2">
+                <Label htmlFor="reportType">Type de rapport</Label>
+                <Select
+                  value={formData.reportType}
+                  onValueChange={(value) => handleInputChange('reportType', value as ReportType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner le type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STANDARD">Standard</SelectItem>
+                    <SelectItem value="CUSTOM">Personnalisé</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Catégorie */}
+              <div className="space-y-2">
+                <Label htmlFor="reportCategory">Catégorie</Label>
+                <Input
+                  id="reportCategory"
+                  value={formData.reportCategory}
+                  onChange={(e) => handleInputChange('reportCategory', e.target.value)}
+                  placeholder="Ex: Développement, Réunion, Formation..."
+                />
+              </div>
+
+              {/* Champs structurés du rapport */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Objectifs */}
+                <div className="space-y-2">
+                  <Label htmlFor="objectives">Objectifs</Label>
+                  <textarea
+                    id="objectives"
+                    value={formData.objectives}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('objectives', e.target.value)}
+                    placeholder="Quels étaient les objectifs de cette tâche ?"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md"
+                  />
+                </div>
+
+                {/* Résultats */}
+                <div className="space-y-2">
+                  <Label htmlFor="results">Résultats obtenus</Label>
+                  <textarea
+                    id="results"
+                    value={formData.results}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('results', e.target.value)}
+                    placeholder="Quels résultats avez-vous obtenus ?"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md"
+                  />
+                </div>
+
+                {/* Difficultés */}
+                <div className="space-y-2">
+                  <Label htmlFor="difficulties">Difficultés rencontrées</Label>
+                  <textarea
+                    id="difficulties"
+                    value={formData.difficulties}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('difficulties', e.target.value)}
+                    placeholder="Quelles difficultés avez-vous rencontrées ?"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md"
+                  />
+                </div>
+
+                {/* Prochaines étapes */}
+                <div className="space-y-2">
+                  <Label htmlFor="nextSteps">Prochaines étapes</Label>
+                  <textarea
+                    id="nextSteps"
+                    value={formData.nextSteps}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('nextSteps', e.target.value)}
+                    placeholder="Quelles sont les prochaines étapes ?"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md"
+                  />
+                </div>
+
+                {/* Temps passé */}
+                <div className="space-y-2">
+                  <Label htmlFor="timeSpent">Temps passé</Label>
+                  <Input
+                    id="timeSpent"
+                    value={formData.timeSpent}
+                    onChange={(e) => handleInputChange('timeSpent', e.target.value)}
+                    placeholder="Ex: 2h30, 1 journée, etc."
+                  />
+                </div>
+
+                {/* Ressources utilisées */}
+                <div className="space-y-2">
+                  <Label htmlFor="resources">Ressources utilisées</Label>
+                  <Input
+                    id="resources"
+                    value={formData.resources}
+                    onChange={(e) => handleInputChange('resources', e.target.value)}
+                    placeholder="Ex: Documentation, outils, personnes consultées..."
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Actions */}

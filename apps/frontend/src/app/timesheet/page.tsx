@@ -27,7 +27,7 @@ import {
 } from "@/features/timesheet/api";
 import type { CreateTaskInput, ListTasksQuery, Task, TaskStatus, Paginated } from "@/features/timesheet/types";
 import { CreateProjectWizard } from "@/features/timesheet/components/CreateProjectWizard";
-import { EditTaskDialog } from "@/components/timesheet/EditTaskDialog";
+import { ModernEditTaskDialog } from "@/components/timesheet/ModernEditTaskDialog";
 
 const statusBadge: Record<TaskStatus, { label: string; variant: "success" | "destructive" | "secondary" | "outline" | "default" }> = {
   DRAFT: { label: "Brouillon", variant: "secondary" },
@@ -724,7 +724,7 @@ export default function TimesheetPage() {
       </div>
 
       {/* Modal d'édition */}
-      <EditTaskDialog
+      <ModernEditTaskDialog
         task={editingTask}
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
