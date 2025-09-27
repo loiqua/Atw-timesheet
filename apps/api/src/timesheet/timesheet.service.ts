@@ -1,21 +1,21 @@
 import {
-  BadRequestException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
+  ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
-import { Prisma } from '../../../../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks.query.dto';
+import { Prisma } from '@prisma/client';
 import { PdfService } from './utils/pdf.service';
+import { calculateTimeInfo, isValidTimeRange } from './utils/time.utils';
 
 @Injectable()
 export class TimesheetService {
   private readonly logger = new Logger(TimesheetService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly pdfService: PdfService,
@@ -32,16 +32,48 @@ export class TimesheetService {
     const date = new Date(dto.date);
     if (isNaN(date.getTime())) throw new BadRequestException('Invalid date');
 
+    // Logique de calcul des heures et durée
+    let finalDurationMin: number;
+    let finalStartTime: string | null = null;
+    let finalEndTime: string | null = null;
+
+    if (dto.startTime && dto.endTime) {
+      // Nouveau système : calculer la durée à partir des heures
+      if (!isValidTimeRange(dto.startTime, dto.endTime)) {
+        throw new BadRequestException('Plage horaire invalide');
+      }
+
+      const timeInfo = calculateTimeInfo({
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+      });
+
+      finalDurationMin = timeInfo.durationMinutes;
+      finalStartTime = dto.startTime;
+      finalEndTime = dto.endTime;
+    } else if (dto.durationMin) {
+      // Ancien système : utiliser la durée directement
+      finalDurationMin = dto.durationMin;
+    } else {
+      throw new BadRequestException(
+        'Veuillez fournir soit les heures (startTime/endTime) soit la durée (durationMin)',
+      );
+    }
+
+    const taskData: Prisma.TaskCreateInput = {
+      user: { connect: { id: userId } },
+      domain: { connect: { id: dto.domainId } },
+      date,
+      title: dto.title,
+      description: dto.description ?? null,
+      durationMin: finalDurationMin,
+      status: 'DRAFT',
+      ...(finalStartTime && { startTime: finalStartTime }),
+      ...(finalEndTime && { endTime: finalEndTime }),
+    };
+
     const task = await this.prisma.task.create({
-      data: {
-        userId,
-        domainId: dto.domainId,
-        date,
-        title: dto.title,
-        description: dto.description ?? null,
-        durationMin: dto.durationMin,
-        status: 'DRAFT',
-      },
+      data: taskData,
     });
 
     if (dto.reportContent) {
@@ -61,69 +93,18 @@ export class TimesheetService {
   }
 
   async updateTask(userId: string, taskId: string, dto: UpdateTaskDto) {
-    const task = await this.prisma.task.findUnique({
-      where: { id: taskId },
-      include: { user: { select: { id: true, role: true } } },
-    });
-    if (!task) throw new NotFoundException('Task not found');
-    const isOwner = task.userId === userId;
-    const isAdmin = task.user?.role === 'ADMIN';
-    if (!isOwner && !isAdmin) throw new ForbiddenException();
-    if (task.status !== 'DRAFT') {
-      throw new BadRequestException('Only draft tasks can be edited');
-    }
+    // Validate permission and status
+    await this.verifyDraftEditable(userId, taskId);
 
+    // Validate domain if provided
     if (dto.domainId) await this.ensureDomain(dto.domainId);
 
-    const data: Prisma.TaskUpdateInput = {
-      ...(dto.domainId ? { domain: { connect: { id: dto.domainId } } } : {}),
-      date: dto.date ? new Date(dto.date) : undefined,
-      title: dto.title ?? undefined,
-      description: dto.description ?? undefined,
-      durationMin: dto.durationMin ?? undefined,
-    };
-
+    // Build and apply base task update
+    const data = this.buildTaskUpdateData(dto);
     await this.prisma.task.update({ where: { id: taskId }, data });
 
-    if (
-      dto.reportType !== undefined ||
-      dto.reportContent !== undefined ||
-      dto.reportCategory !== undefined
-    ) {
-      const existing = await this.prisma.report.findUnique({
-        where: { taskId },
-      });
-      let content: Record<string, unknown> = {};
-      const rawContent = existing?.content;
-      if (this.isJsonObject(rawContent)) {
-        content = { ...rawContent };
-      }
-      const nextContent = {
-        ...content,
-        ...(dto.reportCategory !== undefined
-          ? { category: dto.reportCategory }
-          : {}),
-        ...(dto.reportContent ?? {}),
-      } as Prisma.InputJsonObject;
-
-      if (existing) {
-        await this.prisma.report.update({
-          where: { taskId },
-          data: {
-            type: dto.reportType ?? undefined,
-            content: nextContent,
-          },
-        });
-      } else {
-        await this.prisma.report.create({
-          data: {
-            taskId,
-            type: dto.reportType ?? 'STANDARD',
-            content: nextContent,
-          },
-        });
-      }
-    }
+    // Upsert report if any report-related fields were provided
+    await this.upsertReportForUpdate(taskId, dto);
 
     return this.getTaskById(userId, taskId, { allowAdmin: true });
   }
@@ -131,11 +112,18 @@ export class TimesheetService {
   async deleteTask(userId: string, taskId: string) {
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
-      include: { user: { select: { id: true, role: true } } },
     });
     if (!task) throw new NotFoundException('Task not found');
+
     const isOwner = task.userId === userId;
-    const isAdmin = task.user?.role === 'ADMIN';
+
+    // Vérifier si l'utilisateur actuel est admin
+    const currentUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    const isAdmin = currentUser?.role === 'ADMIN';
+
     if (!isOwner && !isAdmin) throw new ForbiddenException();
 
     await this.prisma.task.delete({ where: { id: taskId } });
@@ -169,11 +157,13 @@ export class TimesheetService {
     });
   }
 
-  async rejectTask(adminUserId: string, taskId: string, reason: string) {
+  async rejectTask(adminUserId: string, taskId: string, reason?: string) {
     await this.ensureAdmin(adminUserId);
-    if (!reason || reason.trim().length < 3) {
-      throw new BadRequestException('Rejection comment is required');
-    }
+    // Rendre le commentaire optionnel avec une valeur par défaut
+    const finalReason =
+      reason && reason.trim().length >= 3
+        ? reason
+        : "Rejeté par l'administrateur";
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Task not found');
     if (task.status !== 'SUBMITTED') {
@@ -181,7 +171,7 @@ export class TimesheetService {
     }
     return this.prisma.task.update({
       where: { id: taskId },
-      data: { status: 'REJECTED', managerNote: reason },
+      data: { status: 'REJECTED', managerNote: finalReason },
     });
   }
 
@@ -219,11 +209,18 @@ export class TimesheetService {
 
     const where: Prisma.TaskWhereInput = {};
 
-    // Ownership or admin-scope
-    if (userRole === 'ADMIN' && (query.all === 'true' || query.userId)) {
-      if (query.userId) where.userId = query.userId;
-      // else: all users
+    // Ownership or elevated scope (ADMIN or MANAGER)
+    if (userRole === 'ADMIN' || userRole === 'MANAGER') {
+      if (query.userId) {
+        where.userId = query.userId;
+      } else if (query.all === 'true') {
+        // Show all users' tasks
+      } else {
+        // Default: show only own tasks
+        where.userId = userId;
+      }
     } else {
+      // Regular users can only see their own tasks
       where.userId = userId;
     }
 
@@ -250,10 +247,17 @@ export class TimesheetService {
       }),
     ]);
 
-    return { data, total, page, pageSize };
+    return { tasks: data, total, page, pageSize };
   }
 
   async getTaskPdf(userId: string, taskId: string): Promise<Uint8Array> {
+    // Récupérer les infos de l'utilisateur connecté
+    const currentUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!currentUser) throw new NotFoundException('User not found');
+
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
       include: {
@@ -263,9 +267,10 @@ export class TimesheetService {
       },
     });
     if (!task) throw new NotFoundException('Task not found');
+
     const isOwner = task.userId === userId;
-    const isAdmin = task.user.role === 'ADMIN';
-    if (!isOwner && !isAdmin) throw new ForbiddenException();
+    const isCurrentUserAdmin = currentUser.role === 'ADMIN';
+    if (!isOwner && !isCurrentUserAdmin) throw new ForbiddenException();
 
     // Safely narrow report content
     const content = task.report?.content;
@@ -302,5 +307,75 @@ export class TimesheetService {
       select: { role: true },
     });
     if (!u || u.role !== 'ADMIN') throw new ForbiddenException('Admin only');
+  }
+
+  /** Ensure the task exists, caller can edit it, and it's still a DRAFT. */
+  private async verifyDraftEditable(userId: string, taskId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: { user: { select: { id: true, role: true } } },
+    });
+    if (!task) throw new NotFoundException('Task not found');
+    const isOwner = task.userId === userId;
+    const isAdmin = task.user?.role === 'ADMIN';
+    if (!isOwner && !isAdmin) throw new ForbiddenException();
+    if (task.status !== 'DRAFT') {
+      throw new BadRequestException('Only draft tasks can be edited');
+    }
+    return task;
+  }
+
+  /** Build partial Task update data from DTO */
+  private buildTaskUpdateData(dto: UpdateTaskDto): Prisma.TaskUpdateInput {
+    return {
+      ...(dto.domainId ? { domain: { connect: { id: dto.domainId } } } : {}),
+      date: dto.date ? new Date(dto.date) : undefined,
+      title: dto.title ?? undefined,
+      // allow explicit null to clear description
+      description: dto.description === undefined ? undefined : dto.description,
+      durationMin: dto.durationMin ?? undefined,
+    };
+  }
+
+  /** Upsert task's report if any report-related fields were provided */
+  private async upsertReportForUpdate(taskId: string, dto: UpdateTaskDto) {
+    if (
+      dto.reportType === undefined &&
+      dto.reportContent === undefined &&
+      dto.reportCategory === undefined
+    ) {
+      return;
+    }
+
+    const existing = await this.prisma.report.findUnique({ where: { taskId } });
+    let content: Record<string, unknown> = {};
+    const rawContent = existing?.content;
+    if (this.isJsonObject(rawContent)) content = { ...rawContent };
+
+    const categoryObj =
+      dto.reportCategory !== undefined ? { category: dto.reportCategory } : {};
+    const nextContent = {
+      ...content,
+      ...categoryObj,
+      ...(dto.reportContent ?? {}),
+    } as Prisma.InputJsonObject;
+
+    if (existing) {
+      await this.prisma.report.update({
+        where: { taskId },
+        data: {
+          type: dto.reportType ?? undefined,
+          content: nextContent,
+        },
+      });
+    } else {
+      await this.prisma.report.create({
+        data: {
+          taskId,
+          type: dto.reportType ?? 'STANDARD',
+          content: nextContent,
+        },
+      });
+    }
   }
 }

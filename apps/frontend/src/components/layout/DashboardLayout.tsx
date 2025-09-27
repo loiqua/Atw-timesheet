@@ -12,7 +12,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       <Sidebar />
       <div className="flex flex-col flex-1 lg:ml-64">
         <Header />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

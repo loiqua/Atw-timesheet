@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { Resolver, FieldErrors, FieldError } from 'react-hook-form';
 import { apiPost } from '@/lib/fetcher';
 
-const forgotSchema = z.object({ email: z.string().email({ message: 'Email invalide' }) });
+const forgotSchema = z.object({ email: z.string().email('Email invalide') });
 export type ForgotValues = z.infer<typeof forgotSchema>;
 
 export function ForgotPasswordForm() {

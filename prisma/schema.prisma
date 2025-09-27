@@ -111,7 +111,12 @@ model Task {
   date        DateTime @db.Timestamptz(6)
   title       String
   description String?
-  durationMin Int
+  
+  // Nouveau système d'heures (remplace durationMin à terme)
+  startTime   String?  // Format "HH:mm" (ex: "08:15")
+  endTime     String?  // Format "HH:mm" (ex: "09:45")
+  durationMin Int      // Calculé automatiquement, gardé pour compatibilité
+  
   status      TaskStatus @default(DRAFT)
   managerNote String?
 

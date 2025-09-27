@@ -57,7 +57,7 @@ export function LoginForm() {
           // ignore profile load errors here
         }
       }
-      router.push('/dashboard');
+      router.push('/timesheet');
     } catch (e) {
       setError((e as Error).message);
     } finally {

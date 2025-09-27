@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Logger,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -15,7 +16,6 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiBody,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -25,33 +25,34 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../../../../generated/prisma';
+import { Role } from '@prisma/client';
 import type { AuthRequest } from '../auth/types/auth-request.type';
 import { TimesheetService } from './timesheet.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks.query.dto';
-
-class ApproveTaskDto {
-  note?: string;
-}
-class RejectTaskDto {
-  reason!: string;
-}
-
 @ApiTags('Timesheet')
 @ApiBearerAuth('JWT-auth')
 @Controller('timesheet')
 @UseGuards(JwtAuthGuard)
 export class TimesheetController {
+  private readonly logger = new Logger(TimesheetController.name);
+
   constructor(private readonly service: TimesheetService) {}
 
   @Post('tasks')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new task (DRAFT)' })
-  @ApiResponse({ status: 201, description: 'Task created' })
   async create(@Body() dto: CreateTaskDto, @Request() req: AuthRequest) {
-    return this.service.createTask(req.user.id, dto);
+    console.log('🔍 Creating task:', { dto, userId: req.user.id });
+    try {
+      const result = await this.service.createTask(req.user.id, dto);
+      console.log('✅ Task created successfully:', result.id);
+      return result;
+    } catch (error) {
+      console.error('❌ Error creating task:', error);
+      throw error;
+    }
   }
 
   @Patch('tasks/:id')
@@ -87,7 +88,14 @@ export class TimesheetController {
   @ApiOperation({ summary: 'List tasks with filters and pagination' })
   @ApiOkResponse({ description: 'Paginated list of tasks' })
   async list(@Query() query: ListTasksQueryDto, @Request() req: AuthRequest) {
-    return this.service.listTasks(req.user.id, req.user.role, query);
+    this.logger.log(
+      `Listing tasks for user ${req.user.id} with role ${req.user.role}`,
+    );
+    return this.service.listTasks(
+      req.user.id,
+      req.user.role as 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | 'INFO_IT',
+      query,
+    );
   }
 
   @Post('tasks/:id/submit')
@@ -105,13 +113,20 @@ export class TimesheetController {
   @Post('tasks/:id/approve')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Approve a SUBMITTED task (admin only)' })
-  @ApiBody({ type: ApproveTaskDto })
   async approve(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() body: ApproveTaskDto,
+    @Body() body: { note?: string },
     @Request() req: AuthRequest,
   ) {
-    return this.service.approveTask(req.user.id, id, body?.note);
+    console.log('🔍 Approving task:', { id, body, userRole: req.user.role });
+    try {
+      const result = await this.service.approveTask(req.user.id, id, body.note);
+      console.log('✅ Task approved successfully:', result.id);
+      return result;
+    } catch (error) {
+      console.error('❌ Error approving task:', error);
+      throw error;
+    }
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -121,29 +136,52 @@ export class TimesheetController {
   @ApiOperation({
     summary: 'Reject a SUBMITTED task with comment (admin only)',
   })
-  @ApiBody({ type: RejectTaskDto })
   async reject(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() body: RejectTaskDto,
+    @Body() body: { reason: string },
     @Request() req: AuthRequest,
   ) {
-    return this.service.rejectTask(req.user.id, id, body?.reason);
+    console.log('🔍 Rejecting task:', { id, body, userRole: req.user.role });
+    try {
+      const result = await this.service.rejectTask(
+        req.user.id,
+        id,
+        body.reason,
+      );
+      console.log('✅ Task rejected successfully:', result.id);
+      return result;
+    } catch (error) {
+      console.error('❌ Error rejecting task:', error);
+      throw error;
+    }
   }
 
   @Get('tasks/:id/pdf')
   @ApiOperation({ summary: 'Download PDF summary for a task (owner or admin)' })
-  @ApiResponse({ status: 200, description: 'Returns application/pdf' })
+  @ApiResponse({ status: 200, description: 'Returns base64 encoded PDF' })
   async pdf(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Request() req: AuthRequest,
-  ) {
-    // Nest will set headers automatically if we return a Stream/Buffer with custom headers,
-    // but for simplicity we return a base64 payload here (client can download). For real download,
-    // use @Res() and set headers.
-    const bytes = await this.service.getTaskPdf(req.user.id, id);
-    return {
-      contentType: 'application/pdf',
-      data: Buffer.from(bytes).toString('base64'),
-    };
+  ): Promise<{ contentType: string; data: string }> {
+    console.log('🔍 PDF request:', {
+      id,
+      userRole: req.user.role,
+      userId: req.user.id,
+    });
+    try {
+      const bytes = await this.service.getTaskPdf(req.user.id, id);
+      console.log('✅ PDF generated successfully:', { id, size: bytes.length });
+
+      // Convertir en base64 pour le frontend
+      const base64Data = Buffer.from(bytes).toString('base64');
+
+      return {
+        contentType: 'application/pdf',
+        data: base64Data,
+      };
+    } catch (error) {
+      console.error('❌ Error generating PDF:', error);
+      throw error;
+    }
   }
 }

@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { Role } from '../../../../generated/prisma';
+import { Role } from '@prisma/client';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -356,7 +356,7 @@ export class AuthService {
   ): Promise<{ accessToken: string; refreshToken: string }> {
     this.logger.log(`Refresh token attempt: userId=${userId}`);
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user?.refreshToken) {
+    if (!user?.refreshToken) {
       this.logger.warn(
         `Refresh token failed: user not found or no refreshToken (userId=${userId})`,
       );

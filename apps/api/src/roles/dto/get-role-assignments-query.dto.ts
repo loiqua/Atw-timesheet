@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Role } from '../../../../../generated/prisma';
+import { Role } from '@prisma/client';
 
 export class GetRoleAssignmentsQueryDto {
   @ApiPropertyOptional({ description: 'Filter by user ID (UUID v4)' })

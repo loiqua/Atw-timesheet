@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { Role } from '../../../../../generated/prisma';
+import { Role } from '@prisma/client';
 
 // This is based on the UserResponse type in AuthService
 // and the return type of the validateUser method.

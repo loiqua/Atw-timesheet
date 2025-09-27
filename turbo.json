@@ -7,6 +7,25 @@
     "lint": {},
     "dev": {
       "cache": false
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "test:cov": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "test:watch": {
+      "cache": false
+    },
+    "test:e2e": {
+      "dependsOn": ["^build"],
+      "outputs": ["test-results/**", "playwright-report/**"]
+    },
+    "test:e2e:headless": {
+      "dependsOn": ["^build"],
+      "outputs": ["test-results/**", "playwright-report/**"]
     }
   }
 }

@@ -27,20 +27,122 @@ async function requestWithRefresh(
   return doRequest();
 }
 
+export async function apiPatch<TBody extends object, TResp = unknown>(
+  path: string,
+  body: TBody,
+  init?: RequestInit,
+  opts?: { readonly auth?: boolean },
+): Promise<TResp> {
+  const doRequest = () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(init?.headers as Record<string, string> | undefined),
+    };
+    if (opts?.auth) {
+      const t = useAuthStore.getState().accessToken ?? readAccessToken();
+      if (t) headers.Authorization = `Bearer ${t}`;
+    }
+    return fetch(`${API_URL}${path}`,
+      {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(body),
+        ...init,
+      },
+    );
+  };
+  const res = await requestWithRefresh(doRequest, { auth: !!opts?.auth });
+  const text = await res.text();
+  let data: unknown;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!res.ok) {
+    let message = res.statusText || 'Request failed';
+    if (data && typeof data === 'object' && 'message' in data) {
+      const m = (data as { message?: unknown }).message;
+      if (typeof m === 'string') message = m;
+      else if (Array.isArray(m)) message = m.map(String).join(', ');
+      else if (m) message = JSON.stringify(m);
+    }
+    throw new Error(message);
+  }
+  return data as TResp;
+}
+
+export async function apiDelete<TResp = unknown>(
+  path: string,
+  init?: RequestInit,
+  opts?: { readonly auth?: boolean },
+): Promise<TResp> {
+  const doRequest = () => {
+    const headers: Record<string, string> = {
+      ...(init?.headers as Record<string, string> | undefined),
+    };
+    if (opts?.auth) {
+      const t = useAuthStore.getState().accessToken ?? readAccessToken();
+      if (t) headers.Authorization = `Bearer ${t}`;
+    }
+    return fetch(`${API_URL}${path}`,
+      {
+        method: 'DELETE',
+        headers,
+        ...init,
+      },
+    );
+  };
+  const res = await requestWithRefresh(doRequest, { auth: !!opts?.auth });
+  const text = await res.text();
+  let data: unknown;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!res.ok) {
+    let message = res.statusText || 'Request failed';
+    if (data && typeof data === 'object' && 'message' in data) {
+      const m = (data as { message?: unknown }).message;
+      if (typeof m === 'string') message = m;
+      else if (Array.isArray(m)) message = m.map(String).join(', ');
+      else if (m) message = JSON.stringify(m);
+    }
+    throw new Error(message);
+  }
+  return data as TResp;
+}
+
+export function downloadBase64File(base64: string, contentType: string, filename: string) {
+  try {
+    const link = document.createElement('a');
+    link.href = `data:${contentType};base64,${base64}`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch {
+    // ignore
+  }
+}
+
 export async function apiPost<TBody extends object, TResp = unknown>(
   path: string,
   body: TBody,
   init?: RequestInit,
   opts?: { readonly auth?: boolean },
 ): Promise<TResp> {
-  const doRequest = () => fetch(`${API_URL}${path}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}), ...(opts?.auth && useAuthStore.getState().accessToken ? { Authorization: `Bearer ${useAuthStore.getState().accessToken}` } : {}) },
-      body: JSON.stringify(body),
-      ...init,
-    },
-  );
+  const doRequest = () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(init?.headers as Record<string, string> | undefined),
+    };
+    if (opts?.auth) {
+      const t = useAuthStore.getState().accessToken ?? readAccessToken();
+      if (t) headers.Authorization = `Bearer ${t}`;
+    }
+    return fetch(`${API_URL}${path}`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+        ...init,
+      },
+    );
+  };
   const res = await requestWithRefresh(doRequest, { auth: !!opts?.auth });
   const text = await res.text();
   let data: unknown;

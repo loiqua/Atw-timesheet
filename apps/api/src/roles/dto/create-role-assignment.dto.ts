@@ -5,8 +5,8 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import type { Role } from '../../../../../generated/prisma';
-import * as PrismaEnums from '../../../../../generated/prisma';
+import type { Role } from '@prisma/client';
+import * as PrismaEnums from '@prisma/client';
 
 export class CreateRoleAssignmentDto {
   @IsEnum(PrismaEnums.Role)

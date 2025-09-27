@@ -35,14 +35,14 @@ export default function JwtLogoutButton({ className }: JwtLogoutButtonProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-4 py-2 text-left transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-800 disabled:opacity-60",
+        "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 hover:bg-red-500/20 hover:text-red-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-800 disabled:opacity-60 text-blue-100 group",
         className,
       )}
       aria-label="Déconnexion"
       disabled={loading}
     >
-      <LogOut aria-hidden="true" className="h-5 w-5" />
-      <span>{loading ? "Déconnexion…" : "Déconnexion"}</span>
+      <LogOut aria-hidden="true" className="h-5 w-5 group-hover:text-red-300 transition-colors" />
+      <span className="font-medium">{loading ? "Déconnexion…" : "Déconnexion"}</span>
     </button>
   );
 }

@@ -7,7 +7,7 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
-import { TaskStatus } from '../../../../../generated/prisma';
+import { TaskStatus } from '@prisma/client';
 
 export class ListTasksQueryDto {
   @IsOptional()

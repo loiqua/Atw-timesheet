@@ -8,8 +8,9 @@ import {
   IsUUID,
   Min,
   IsInt,
+  Matches,
 } from 'class-validator';
-import { ReportType } from '../../../../../generated/prisma';
+import { ReportType } from '@prisma/client';
 
 export class CreateTaskDto {
   @IsUUID()
@@ -26,9 +27,26 @@ export class CreateTaskDto {
   @IsDateString()
   date!: string; // ISO 8601, stored as timestamptz
 
+  // Nouveau système d'heures (prioritaire)
+  @IsOptional()
+  @IsString()
+  @Matches(/^([0-1]?\d|2[0-3]):[0-5]\d$/, {
+    message: "Format d'heure invalide. Attendu: HH:mm",
+  })
+  startTime?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([0-1]?\d|2[0-3]):[0-5]\d$/, {
+    message: "Format d'heure invalide. Attendu: HH:mm",
+  })
+  endTime?: string;
+
+  // Ancien système (optionnel pour compatibilité)
+  @IsOptional()
   @IsInt()
   @Min(0)
-  durationMin!: number;
+  durationMin?: number;
 
   // Optional detailed report
   @IsOptional()

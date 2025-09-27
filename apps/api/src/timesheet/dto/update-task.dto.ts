@@ -9,7 +9,7 @@ import {
   IsUUID,
   Min,
 } from 'class-validator';
-import { ReportType } from '../../../../../generated/prisma';
+import { ReportType } from '@prisma/client';
 
 export class UpdateTaskDto {
   @IsOptional()

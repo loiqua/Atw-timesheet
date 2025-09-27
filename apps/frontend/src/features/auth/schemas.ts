@@ -17,14 +17,14 @@ export type LoginValues = z.infer<typeof loginSchema>;
 export const registerSchema = z
   .object({
     fullName: z.string().min(2, 'Full name is required'),
-    email: z.string().email({ message: 'Invalid email' }),
+    email: z.string().email('Invalid email'),
     username: z
       .string()
       .min(3, 'Username must be at least 3 chars')
       .regex(/^[A-Za-z][A-Za-z0-9._-]{2,}$/u, 'Only letters, numbers, dot, dash, underscore. Must start with a letter'),
     password: passwordSchema,
     confirmPassword: z.string(),
-    domainId: z.string().uuid({ message: 'Le domaine est requis' }),
+    domainId: z.string().uuid('Le domaine est requis'),
     adminKey: z.string().optional(),
   })
   .refine((val) => val.password === val.confirmPassword, {
