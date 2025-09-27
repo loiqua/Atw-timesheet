@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { DomainsModule } from './domains/domains.module';
 import { TimesheetModule } from './timesheet/timesheet.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { TimesheetModule } from './timesheet/timesheet.module';
     RolesModule,
     DomainsModule,
     TimesheetModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

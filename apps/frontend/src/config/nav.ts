@@ -13,7 +13,7 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   {
-    href: "/dashboard",
+    href: "/timesheet",
     label: "TimeSheet",
     icon: Clock,
   },
@@ -23,7 +23,7 @@ export const navItems: NavItem[] = [
     icon: Calendar,
   },
   {
-    href: "/dashboard/reports",
+    href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
   },

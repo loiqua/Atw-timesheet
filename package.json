@@ -45,6 +45,11 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/throttler": "^6.4.0",
     "@prisma/client": "^6.15.0",
+    "@radix-ui/react-avatar": "^1.1.10",
+    "@radix-ui/react-progress": "^1.1.7",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-separator": "^1.1.7",
+    "@types/recharts": "^1.8.29",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -53,7 +58,8 @@
     "nodemailer": "^6.10.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "recharts": "^3.2.1"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
