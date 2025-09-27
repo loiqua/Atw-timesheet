@@ -18,7 +18,7 @@ export const navItems: NavItem[] = [
     icon: Clock,
   },
   {
-    href: "/dashboard/calendar",
+    href: "/calendar",
     label: "Calendrier",
     icon: Calendar,
   },

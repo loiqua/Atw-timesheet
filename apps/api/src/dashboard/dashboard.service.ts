@@ -43,7 +43,7 @@ export class DashboardService {
 
   async getUserDashboardStats(userId: string, query: DashboardStatsQueryDto) {
     const { startDate, endDate } = this.getDateRange(
-      query.dateRange || DateRange.MONTH,
+      query.dateRange ?? DateRange.MONTH,
     );
 
     // Récupérer les tâches de l'utilisateur dans la période
@@ -109,7 +109,7 @@ export class DashboardService {
     query: DashboardStatsQueryDto,
   ) {
     const { startDate, endDate } = this.getDateRange(
-      query.dateRange || DateRange.MONTH,
+      query.dateRange ?? DateRange.MONTH,
     );
 
     // Si un userId spécifique est demandé
@@ -261,7 +261,7 @@ export class DashboardService {
       },
       userStats,
       topPerformers: userStats
-        .sort((a, b) => b.productivity - a.productivity)
+        .toSorted((a, b) => b.productivity - a.productivity)
         .slice(0, 5),
     };
   }
@@ -271,7 +271,7 @@ export class DashboardService {
     query: DashboardStatsQueryDto,
   ) {
     const { startDate, endDate } = this.getDateRange(
-      query.dateRange || DateRange.MONTH,
+      query.dateRange ?? DateRange.MONTH,
     );
 
     // Récupérer les tâches par semaine
@@ -349,7 +349,7 @@ export class DashboardService {
     query: DashboardStatsQueryDto,
   ) {
     const { startDate, endDate } = this.getDateRange(
-      query.dateRange || DateRange.MONTH,
+      query.dateRange ?? DateRange.MONTH,
     );
 
     const projects = await this.prisma.domain.findMany({

@@ -37,10 +37,7 @@ export class DashboardController {
     @Query() query: DashboardStatsQueryDto,
     @Request() req: AuthRequest,
   ) {
-    return await this.dashboardService.getAdminDashboardStats(
-      req.user,
-      query,
-    );
+    return await this.dashboardService.getAdminDashboardStats(req.user, query);
   }
 
   @Get('productivity')
@@ -50,10 +47,7 @@ export class DashboardController {
     @Query() query: DashboardStatsQueryDto,
     @Request() req: AuthRequest,
   ) {
-    return await this.dashboardService.getProductivityData(
-      req.user,
-      query,
-    );
+    return await this.dashboardService.getProductivityData(req.user, query);
   }
 
   @Get('projects')
@@ -63,10 +57,7 @@ export class DashboardController {
     @Query() query: DashboardStatsQueryDto,
     @Request() req: AuthRequest,
   ) {
-    return await this.dashboardService.getProjectStats(
-      req.user,
-      query,
-    );
+    return await this.dashboardService.getProjectStats(req.user, query);
   }
 
   @Get('admin/users')

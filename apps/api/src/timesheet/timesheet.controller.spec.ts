@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TimesheetController } from './timesheet.controller';
 import { TimesheetService } from './timesheet.service';
+import { AuthRequest } from '../auth/types/auth-request.type';
 
 describe('TimesheetController', () => {
   let controller: TimesheetController;
@@ -44,12 +45,24 @@ describe('TimesheetController', () => {
   describe('pdf endpoint', () => {
     it('should return base64 encoded PDF', async () => {
       const taskId = 'task-123';
-      const mockUser = { id: 'user-123', role: 'EMPLOYEE' };
+      const mockUser = {
+        id: 'user-123',
+        role: 'EMPLOYEE' as const,
+        email: 'test@example.com',
+        username: 'testuser',
+        fullName: 'Test User',
+        isActive: true,
+        domainId: null,
+        lastLogin: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
       const mockPdfBytes = new Uint8Array([1, 2, 3, 4]); // Mock PDF bytes
 
       mockTimesheetService.getTaskPdf.mockResolvedValue(mockPdfBytes);
 
-      const result = await controller.pdf(taskId, { user: mockUser } as any);
+      const mockRequest: Partial<AuthRequest> = { user: mockUser };
+      const result = await controller.pdf(taskId, mockRequest as AuthRequest);
 
       expect(result).toEqual({
         contentType: 'application/pdf',

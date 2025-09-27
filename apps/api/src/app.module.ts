@@ -11,6 +11,7 @@ import { RolesModule } from './roles/roles.module';
 import { DomainsModule } from './domains/domains.module';
 import { TimesheetModule } from './timesheet/timesheet.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { CalendarModule } from './calendar/calendar.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     DomainsModule,
     TimesheetModule,
     DashboardModule,
+    CalendarModule,
   ],
   controllers: [AppController],
   providers: [
