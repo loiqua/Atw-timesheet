@@ -27,6 +27,7 @@ import {
 } from "@/features/timesheet/api";
 import type { CreateTaskInput, ListTasksQuery, Task, TaskStatus, Paginated } from "@/features/timesheet/types";
 import { CreateProjectWizard } from "@/features/timesheet/components/CreateProjectWizard";
+import { EditTaskDialog } from "@/components/timesheet/EditTaskDialog";
 
 const statusBadge: Record<TaskStatus, { label: string; variant: "success" | "destructive" | "secondary" | "outline" | "default" }> = {
   DRAFT: { label: "Brouillon", variant: "secondary" },
@@ -58,12 +59,13 @@ export default function TimesheetPage() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [showFilters, setShowFilters] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   // Fonction pour gérer l'édition d'une tâche
-  const handleEditTask = (taskId: string) => {
-    // TODO: Implémenter l'ouverture du modal d'édition
-    console.log("Édition de la tâche:", taskId);
-    alert("Fonctionnalité d'édition à implémenter");
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsEditDialogOpen(true);
   };
 
   const isAdmin = role === "ADMIN";
@@ -528,7 +530,7 @@ export default function TimesheetPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleEditTask(t.id)}
+                            onClick={() => handleEditTask(t)}
                             className="h-8 w-8 p-0 rounded-full border-2 border-blue-300 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
                             title="Modifier"
                           >
@@ -623,7 +625,7 @@ export default function TimesheetPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEditTask(t.id)}
+                          onClick={() => handleEditTask(t)}
                           className="h-8 w-8 p-0 rounded-full border-2 border-blue-300 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
                           title="Modifier"
                         >
@@ -720,6 +722,13 @@ export default function TimesheetPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal d'édition */}
+      <EditTaskDialog
+        task={editingTask}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+      />
     </main>
   );
 }

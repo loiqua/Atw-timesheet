@@ -4,10 +4,10 @@ import React from 'react';
 import { Clock, FileText, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { CalendarStats } from '@/types/calendar';
+import type { CalendarStats as CalendarStatsType } from '@/types/calendar';
 
 interface CalendarStatsProps {
-  readonly stats: CalendarStats;
+  readonly stats: CalendarStatsType;
 }
 
 export const CalendarStats: React.FC<CalendarStatsProps> = ({ stats }) => {

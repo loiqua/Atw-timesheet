@@ -12,10 +12,10 @@ export interface TimeRange {
 }
 
 interface TimeRangeInputProps {
-  value?: TimeRange;
-  onChange: (timeRange: TimeRange | null) => void;
-  disabled?: boolean;
-  className?: string;
+  readonly value?: TimeRange;
+  readonly onChange: (timeRange: TimeRange | null) => void;
+  readonly disabled?: boolean;
+  readonly className?: string;
 }
 
 /**
@@ -28,8 +28,8 @@ export function TimeRangeInput({
   disabled = false, 
   className = "" 
 }: TimeRangeInputProps) {
-  const [startTime, setStartTime] = useState(value?.startTime || '');
-  const [endTime, setEndTime] = useState(value?.endTime || '');
+  const [startTime, setStartTime] = useState(value?.startTime ?? '');
+  const [endTime, setEndTime] = useState(value?.endTime ?? '');
   const [duration, setDuration] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
