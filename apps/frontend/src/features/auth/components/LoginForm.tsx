@@ -18,7 +18,7 @@ export function LoginForm() {
   const loginResolver: Resolver<LoginValues> = async (values) => {
     const result = loginSchema.safeParse(values);
     if (result.success) {
-      return { values: result.data, errors: {} as FieldErrors<LoginValues> };
+      return { values: result.data, errors: {} };
     }
     const errs: FieldErrors<LoginValues> = {};
     for (const issue of result.error.issues) {
@@ -30,7 +30,7 @@ export function LoginForm() {
         } as FieldError;
       }
     }
-    return { values: {} as LoginValues, errors: errs };
+    return { values: {}, errors: errs };
   };
 
   const {

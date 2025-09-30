@@ -16,13 +16,13 @@ export function ForgotPasswordForm() {
 
   const resolver: Resolver<ForgotValues> = async (values) => {
     const r = forgotSchema.safeParse(values);
-    if (r.success) return { values: r.data, errors: {} as FieldErrors<ForgotValues> };
+    if (r.success) return { values: r.data, errors: {} };
     const errs: FieldErrors<ForgotValues> = {};
     for (const issue of r.error.issues) {
       const key = issue.path[0];
       if (key === 'email') (errs as Record<string, FieldError>)[key] = { type: 'zod', message: issue.message } as FieldError;
     }
-    return { values: {} as ForgotValues, errors: errs };
+    return { values: {}, errors: errs };
   };
 
   const { register, handleSubmit, formState: { errors }, } = useForm<ForgotValues>({ resolver, mode: 'onChange' });

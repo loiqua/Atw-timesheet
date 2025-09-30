@@ -125,7 +125,7 @@ export const TimeSlotCard: React.FC<TimeSlotCardProps> = ({
             {canManage && timeSlot.status === 'SUBMITTED' && (
               <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                 <Tooltip>
-                  <TooltipTrigger asChild>
+                  <TooltipTrigger>
                     <Button
                       size="sm"
                       variant="default"
@@ -140,7 +140,7 @@ export const TimeSlotCard: React.FC<TimeSlotCardProps> = ({
                 </Tooltip>
 
                 <Tooltip>
-                  <TooltipTrigger asChild>
+                  <TooltipTrigger>
                     <Button
                       size="sm"
                       variant="destructive"

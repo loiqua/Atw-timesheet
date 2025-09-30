@@ -26,7 +26,7 @@ import { MailService } from './mail.service';
             from: process.env.SMTP_FROM || 'no-reply@mailtrap.io',
           },
           template: {
-            dir: process.cwd() + '/templates',
+            dir: process.cwd() + '/apps/api/templates',
             adapter: new HandlebarsAdapter(),
             options: {
               strict: true,

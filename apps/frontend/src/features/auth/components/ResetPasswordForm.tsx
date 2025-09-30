@@ -47,13 +47,13 @@ export function ResetPasswordForm({ tokenFromUrl }: { readonly tokenFromUrl?: st
 
   const resolver: Resolver<ResetValues> = async (values) => {
     const r = resetSchema.safeParse(values);
-    if (r.success) return { values: r.data, errors: {} as FieldErrors<ResetValues> };
+    if (r.success) return { values: r.data, errors: {} };
     const errs: FieldErrors<ResetValues> = {};
     for (const issue of r.error.issues) {
       const key = issue.path[0] as keyof ResetValues | undefined;
       if (key) (errs as Record<string, FieldError>)[key as string] = { type: 'zod', message: issue.message } as FieldError;
     }
-    return { values: {} as ResetValues, errors: errs };
+    return { values: {}, errors: errs };
   };
 
   const { register, handleSubmit, control, formState: { errors } } = useForm<ResetValues>({ resolver, mode: 'onChange', defaultValues: { token: tokenFromUrl ?? '' } });

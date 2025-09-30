@@ -206,7 +206,7 @@ const CustomFieldRenderer: React.FC<CustomFieldRendererProps> = ({ field, onUpda
         return (
           <Select
             value={field.value as string}
-            onValueChange={(value) => onUpdate({ value })}
+            onValueChange={(value: string) => onUpdate({ value })}
           >
             <SelectTrigger>
               <SelectValue placeholder={`Sélectionner ${field.label.toLowerCase()}...`} />
@@ -701,7 +701,7 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
                     <Label htmlFor="domain">Domaine *</Label>
                     <Select
                       value={formData.domainId}
-                      onValueChange={(value) => handleInputChange('domainId', value)}
+                      onValueChange={(value: string) => handleInputChange('domainId', value)}
                       disabled={isLoadingData}
                     >
                       <SelectTrigger>
@@ -766,7 +766,7 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
                       <Label htmlFor="reportType">Type de rapport</Label>
                       <Select
                         value={formData.reportType}
-                        onValueChange={(value) => handleInputChange('reportType', value as ReportType)}
+                        onValueChange={(value: string) => handleInputChange('reportType', value as ReportType)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner le type" />

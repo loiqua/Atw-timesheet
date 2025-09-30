@@ -549,8 +549,11 @@ export function CreateProjectWizard({
               🐛 Debug
             </Button>
             <Button type="submit" variant="accent" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "⏳ Création..." : 
-               form.watch("addDetailedReport") ? "Suivant" : "Créer le projet"}
+              {(() => {
+                if (form.formState.isSubmitting) return "⏳ Création...";
+                if (form.watch("addDetailedReport")) return "Suivant";
+                return "Créer le projet";
+              })()}
             </Button>
           </div>
         </form>

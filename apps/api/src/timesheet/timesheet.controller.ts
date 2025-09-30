@@ -44,15 +44,7 @@ export class TimesheetController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create a new task (DRAFT)' })
   async create(@Body() dto: CreateTaskDto, @Request() req: AuthRequest) {
-    console.log('🔍 Creating task:', { dto, userId: req.user.id });
-    try {
-      const result = await this.service.createTask(req.user.id, dto);
-      console.log('✅ Task created successfully:', result.id);
-      return result;
-    } catch (error) {
-      console.error('❌ Error creating task:', error);
-      throw error;
-    }
+    return this.service.createTask(req.user.id, dto);
   }
 
   @Patch('tasks/:id')
@@ -118,15 +110,7 @@ export class TimesheetController {
     @Body() body: { note?: string },
     @Request() req: AuthRequest,
   ) {
-    console.log('🔍 Approving task:', { id, body, userRole: req.user.role });
-    try {
-      const result = await this.service.approveTask(req.user.id, id, body.note);
-      console.log('✅ Task approved successfully:', result.id);
-      return result;
-    } catch (error) {
-      console.error('❌ Error approving task:', error);
-      throw error;
-    }
+    return this.service.approveTask(req.user.id, id, body.note);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -141,19 +125,7 @@ export class TimesheetController {
     @Body() body: { reason: string },
     @Request() req: AuthRequest,
   ) {
-    console.log('🔍 Rejecting task:', { id, body, userRole: req.user.role });
-    try {
-      const result = await this.service.rejectTask(
-        req.user.id,
-        id,
-        body.reason,
-      );
-      console.log('✅ Task rejected successfully:', result.id);
-      return result;
-    } catch (error) {
-      console.error('❌ Error rejecting task:', error);
-      throw error;
-    }
+    return this.service.rejectTask(req.user.id, id, body.reason);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -178,23 +150,7 @@ export class TimesheetController {
     @Body() body: { note: string },
     @Request() req: AuthRequest,
   ) {
-    console.log('🔍 Requesting revision for task:', {
-      id,
-      body,
-      userRole: req.user.role,
-    });
-    try {
-      const result = await this.service.requestTaskRevision(
-        req.user.id,
-        id,
-        body.note,
-      );
-      console.log('✅ Task sent for revision successfully:', result.id);
-      return result;
-    } catch (error) {
-      console.error('❌ Error requesting task revision:', error);
-      throw error;
-    }
+    return this.service.requestTaskRevision(req.user.id, id, body.note);
   }
 
   @Get('tasks/:id/pdf')
@@ -204,25 +160,12 @@ export class TimesheetController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Request() req: AuthRequest,
   ): Promise<{ contentType: string; data: string }> {
-    console.log('🔍 PDF request:', {
-      id,
-      userRole: req.user.role,
-      userId: req.user.id,
-    });
-    try {
-      const bytes = await this.service.getTaskPdf(req.user.id, id);
-      console.log('✅ PDF generated successfully:', { id, size: bytes.length });
+    const bytes = await this.service.getTaskPdf(req.user.id, id);
+    const base64Data = Buffer.from(bytes).toString('base64');
 
-      // Convertir en base64 pour le frontend
-      const base64Data = Buffer.from(bytes).toString('base64');
-
-      return {
-        contentType: 'application/pdf',
-        data: base64Data,
-      };
-    } catch (error) {
-      console.error('❌ Error generating PDF:', error);
-      throw error;
-    }
+    return {
+      contentType: 'application/pdf',
+      data: base64Data,
+    };
   }
 }

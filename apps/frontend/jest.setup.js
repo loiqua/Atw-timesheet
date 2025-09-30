@@ -1,4 +1,5 @@
-import '@testing-library/jest-dom';
+// eslint-disable-next-line
+require('@testing-library/jest-dom');
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({

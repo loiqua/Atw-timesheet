@@ -20,7 +20,7 @@ class CalendarService {
       ...(filters.status && { status: filters.status })
     });
 
-    const response = await apiClient.get(`/calendar/week?${params}`);
+    const response = await apiClient.get<CalendarWeek>(`/calendar/week?${params}`);
     return response.data;
   }
 
@@ -28,7 +28,7 @@ class CalendarService {
    * Récupère la liste des utilisateurs (pour les admins)
    */
   async getUsers(): Promise<CalendarUser[]> {
-    const response = await apiClient.get('/calendar/users');
+    const response = await apiClient.get<CalendarUser[]>('/calendar/users');
     return response.data;
   }
 
@@ -36,7 +36,7 @@ class CalendarService {
    * Récupère la liste des domaines
    */
   async getDomains(): Promise<CalendarDomain[]> {
-    const response = await apiClient.get('/calendar/domains');
+    const response = await apiClient.get<CalendarDomain[]>('/calendar/domains');
     return response.data;
   }
 
@@ -50,7 +50,7 @@ class CalendarService {
       ...(filters.domainId && { domainId: filters.domainId })
     });
 
-    const response = await apiClient.get(`/calendar/stats?${params}`);
+    const response = await apiClient.get<CalendarStats>(`/calendar/stats?${params}`);
     return response.data;
   }
 
@@ -65,7 +65,7 @@ class CalendarService {
    * Récupère les détails d'un créneau horaire
    */
   async getTimeSlotDetails(timeSlotId: string): Promise<CalendarTimeSlot> {
-    const response = await apiClient.get(`/calendar/timeslots/${timeSlotId}`);
+    const response = await apiClient.get<CalendarTimeSlot>(`/calendar/timeslots/${timeSlotId}`);
     return response.data;
   }
 

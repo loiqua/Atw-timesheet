@@ -29,7 +29,7 @@ export function RegisterForm() {
           } as FieldError;
         }
       }
-      return { values: {} as RegisterValues, errors: errs };
+      return { values: {}, errors: errs };
     }
     // Extra rule: if selected domain slug is 'direction', adminKey required
     const sel = domains.find((d) => d.id === values.domainId);
@@ -38,9 +38,9 @@ export function RegisterForm() {
         type: 'custom',
         message: "La clé admin est requise pour le domaine 'Direction'",
       } as FieldError;
-      return { values: {} as RegisterValues, errors: errs };
+      return { values: {}, errors: errs };
     }
-    return { values: result.data, errors: {} as FieldErrors<RegisterValues> };
+    return { values: result.data, errors: {} };
   };
 
   const {

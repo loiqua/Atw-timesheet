@@ -146,20 +146,8 @@ export class NotificationsService {
     notificationId: string,
   ): Promise<NotificationResponseDto> {
     try {
-      console.log('🔍 NotificationService.markSingleAsRead:', {
-        userId,
-        notificationId,
-      });
-
       const notification = await this.prisma.notification.findFirst({
         where: { id: notificationId, userId },
-      });
-
-      console.log('🔍 Notification found:', notification ? 'YES' : 'NO', {
-        notificationExists: !!notification,
-        notificationUserId: notification?.userId,
-        requestUserId: userId,
-        notificationIsRead: notification?.isRead,
       });
 
       if (!notification) {
@@ -173,15 +161,9 @@ export class NotificationsService {
         data: { isRead: true },
       });
 
-      console.log('🔍 Notification updated successfully:', {
-        id: updatedNotification.id,
-        isRead: updatedNotification.isRead,
-      });
-
       this.logger.log(`Notification ${notificationId} marked as read`);
       return this.mapToResponseDto(updatedNotification);
     } catch (error) {
-      console.error('❌ Error in markSingleAsRead:', error);
       this.logger.error(
         `Failed to mark notification ${notificationId} as read: ${error instanceof Error ? error.message : 'Unknown error'}`,
         error instanceof Error ? error.stack : undefined,

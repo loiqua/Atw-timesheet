@@ -174,7 +174,7 @@ export const CalendarView: React.FC = () => {
             {canViewAllUsers && (
               <Select
                 value={filters.userId ?? "all"}
-                onValueChange={(value) => 
+                onValueChange={(value: string) => 
                   setFilters(prev => ({ 
                     ...prev, 
                     userId: value === "all" ? undefined : value 
@@ -211,7 +211,7 @@ export const CalendarView: React.FC = () => {
               {canViewAllUsers ? (
                 <Select
                   value={filters.domainId ?? "all"}
-                  onValueChange={(value) => 
+                  onValueChange={(value: string) => 
                     setFilters(prev => ({ 
                       ...prev, 
                       domainId: value === "all" ? undefined : value 
@@ -245,7 +245,7 @@ export const CalendarView: React.FC = () => {
                 // 🔒 Pour les utilisateurs normaux: Filtre domaine restreint à leurs domaines uniquement
                 <Select
                   value={filters.domainId ?? "all"}
-                  onValueChange={(value) => 
+                  onValueChange={(value: string) => 
                     setFilters(prev => ({ 
                       ...prev, 
                       domainId: value === "all" ? undefined : value 
@@ -280,7 +280,7 @@ export const CalendarView: React.FC = () => {
             {/* Filtre statut */}
             <Select
               value={filters.status ?? "all"}
-              onValueChange={(value) => 
+              onValueChange={(value: string) => 
                 setFilters(prev => ({ 
                   ...prev, 
                   status: value === "all" ? undefined : value as TaskStatus 

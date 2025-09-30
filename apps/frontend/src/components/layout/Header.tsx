@@ -20,18 +20,11 @@ const Header = () => {
     <header className="flex items-center justify-between lg:justify-end h-16 px-4 lg:px-8 bg-white border-b">
       <div className="lg:hidden">
         <Sheet>
-          <SheetTrigger asChild>
-            <button
-              type="button"
-              aria-label="Ouvrir le menu de navigation"
-              className="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-            >
-              <Menu className="h-6 w-6" aria-hidden="true" />
-            </button>
+          <SheetTrigger className="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600">
+            <Menu className="h-6 w-6" aria-hidden="true" />
           </SheetTrigger>
           <SheetContent
             side="left"
-            aria-label="Mobile navigation drawer"
             className="p-0 w-64 bg-blue-800 border-r-0"
           >
             <MobileSidebar />

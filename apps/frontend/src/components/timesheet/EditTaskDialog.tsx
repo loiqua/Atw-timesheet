@@ -97,9 +97,9 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
       
       setFormData({
         title: task.title,
-        description: task.description || '',
+        description: task.description ?? '',
         domainId: task.domainId,
-        reportType: task.report?.type || 'STANDARD',
+        reportType: task.report?.type ?? 'STANDARD',
         reportCategory: reportContent.category as string || '',
         objectives: reportContent.objectives as string || '',
         results: reportContent.results as string || '',
@@ -260,7 +260,7 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
               <Label htmlFor="domain">Domaine *</Label>
               <Select
                 value={formData.domainId}
-                onValueChange={(value) => handleInputChange('domainId', value)}
+                onValueChange={(value: string) => handleInputChange('domainId', value)}
                 disabled={isLoadingData}
               >
                 <SelectTrigger>
@@ -312,7 +312,7 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({
                 <Label htmlFor="reportType">Type de rapport</Label>
                 <Select
                   value={formData.reportType}
-                  onValueChange={(value) => handleInputChange('reportType', value as ReportType)}
+                  onValueChange={(value: string) => handleInputChange('reportType', value as ReportType)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner le type" />

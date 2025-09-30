@@ -153,7 +153,7 @@ export const DashboardOverview: React.FC = () => {
             {canViewAllUsers && (
               <Select
                 value={selectedUser || "all"}
-                onValueChange={(value) => setSelectedUser(value === "all" ? "" : value)}
+                onValueChange={(value: string) => setSelectedUser(value === "all" ? "" : value)}
               >
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Tous les utilisateurs" />

@@ -151,12 +151,6 @@ export class NotificationsController {
     @Request() req: AuthRequest,
     @Param('id') notificationId: string,
   ): Promise<NotificationResponseDto> {
-    console.log('🔍 NotificationController.markSingleAsRead:', {
-      userId: req.user.id,
-      notificationId,
-      userObject: req.user,
-    });
-
     return this.notificationsService.markSingleAsRead(
       req.user.id,
       notificationId,
