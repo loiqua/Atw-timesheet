@@ -170,12 +170,12 @@ export const DashboardOverview: React.FC = () => {
             )}
           </div>
 
-          {/* Ligne 2: Bouton Export (pleine largeur sur mobile) */}
+          {/* Ligne 2: Bouton Export (temporairement masqué) */}
           <Button
             variant="outline"
             onClick={handleExport}
             disabled={exportLoading}
-            className="w-full sm:w-auto sm:self-start"
+            className="w-full sm:w-auto sm:self-start hidden"
           >
             <Download className="h-4 w-4 mr-2" />
             {exportLoading ? 'Export...' : 'Exporter'}

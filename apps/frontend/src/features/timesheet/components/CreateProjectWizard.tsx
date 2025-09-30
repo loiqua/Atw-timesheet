@@ -37,6 +37,73 @@ const step1Schema = z.object({
   // Ancien système (optionnel)
   durationMin: z.number().min(0, "Enter valid minutes").optional(),
   addDetailedReport: z.boolean().default(true),
+}).refine((data) => {
+  // Validation des heures cohérentes
+  if (data.startTime && data.endTime) {
+    const start = new Date(`2000-01-01T${data.startTime}`);
+    const end = new Date(`2000-01-01T${data.endTime}`);
+    return end > start;
+  }
+  return true;
+}, {
+  message: "L'heure de fin doit être postérieure à l'heure de début",
+  path: ["endTime"],
+}).refine((data) => {
+  // 🔒 VALIDATION STRICTE: Heure de début entre 8h00 et 17h59
+  if (data.startTime) {
+    const [hours, minutes] = data.startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes;
+    const minTime = 8 * 60; // 8h00 = 480 minutes
+    const maxTime = 18 * 60 - 1; // 17h59 = 1079 minutes
+    
+    if (totalMinutes < minTime || totalMinutes > maxTime) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: "🚫 Heure de début invalide ! Doit être entre 8h00 et 17h59",
+  path: ["startTime"],
+}).refine((data) => {
+  // 🔒 VALIDATION STRICTE: Heure de fin entre 8h01 et 18h00
+  if (data.endTime) {
+    const [hours, minutes] = data.endTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes;
+    const minTime = 8 * 60 + 1; // 8h01 = 481 minutes (au moins 1 minute de travail)
+    const maxTime = 18 * 60; // 18h00 = 1080 minutes
+    
+    if (totalMinutes < minTime || totalMinutes > maxTime) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: "🚫 Heure de fin invalide ! Doit être entre 8h01 et 18h00",
+  path: ["endTime"],
+}).refine((data) => {
+  // 🔒 VALIDATION: Durée minimale de 15 minutes
+  if (data.startTime && data.endTime) {
+    const start = new Date(`2000-01-01T${data.startTime}`);
+    const end = new Date(`2000-01-01T${data.endTime}`);
+    const diffMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+    return diffMinutes >= 15;
+  }
+  return true;
+}, {
+  message: "⏰ Durée minimale : 15 minutes de travail",
+  path: ["endTime"],
+}).refine((data) => {
+  // 🔒 VALIDATION: Durée maximale de 10 heures (8h-18h = 10h max)
+  if (data.startTime && data.endTime) {
+    const start = new Date(`2000-01-01T${data.startTime}`);
+    const end = new Date(`2000-01-01T${data.endTime}`);
+    const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    return diffHours <= 10;
+  }
+  return true;
+}, {
+  message: "🚫 Durée maximale : 10 heures par jour (8h00-18h00)",
+  path: ["endTime"],
 });
 
 type Step1Values = z.infer<typeof step1Schema>;
@@ -69,10 +136,11 @@ export function CreateProjectWizard({
       title: "Nouvelle tâche",
       description: "",
       date: today,
-      startTime: "",
-      endTime: "",
+      startTime: "08:00", // 🔒 Valeur par défaut logique
+      endTime: "17:00",   // 🔒 Valeur par défaut logique
       addDetailedReport: false,
     },
+    mode: "onChange", // Validation en temps réel
   });
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState<string | null>(null);
@@ -184,41 +252,47 @@ export function CreateProjectWizard({
   const toISODate = (d: string) => new Date(d).toISOString();
 
   const submitStep1 = async (values: Step1Values) => {
-    // Validation avec le schéma
-    const validatedData = step1Schema.parse(values);
-    
-    // Validation : on doit avoir soit les heures, soit la durée
-    const hasStartTime = validatedData.startTime?.trim();
-    const hasEndTime = validatedData.endTime?.trim();
-    const hasDuration = validatedData.durationMin && validatedData.durationMin > 0;
-    
-    if (!hasStartTime && !hasEndTime && !hasDuration) {
-      alert("⚠️ Veuillez saisir les heures de début et de fin, ou une durée en minutes.");
-      return;
-    }
-    
-    // Si on a une heure de début ou de fin, on doit avoir les deux
-    if ((hasStartTime && !hasEndTime) || (!hasStartTime && hasEndTime)) {
-      alert("⚠️ Veuillez saisir à la fois l'heure de début ET l'heure de fin.");
-      return;
-    }
-    
-    const payloadBase: CreateTaskInput = {
-      domainId: validatedData.domainId,
-      title: validatedData.title,
-      description: validatedData.description ?? null,
-      date: toISODate(validatedData.date),
-      ...(validatedData.startTime?.trim() && { startTime: validatedData.startTime }),
-      ...(validatedData.endTime?.trim() && { endTime: validatedData.endTime }),
-      ...(validatedData.durationMin && validatedData.durationMin > 0 && { durationMin: validatedData.durationMin }),
-    };
-    
-    console.log("Debug - Payload envoyé:", payloadBase);
-    
-    if (validatedData.addDetailedReport) {
-      setStep(2);
-    } else {
-      await onCreate(payloadBase);
+    try {
+      console.log("🔍 Données du formulaire:", values);
+      
+      // Validation avec le schéma Zod
+      const validatedData = step1Schema.parse(values);
+      console.log("✅ Validation Zod réussie:", validatedData);
+      
+      // Validation : on doit avoir les heures de début et de fin
+      const hasStartTime = validatedData.startTime?.trim();
+      const hasEndTime = validatedData.endTime?.trim();
+      
+      if (!hasStartTime || !hasEndTime) {
+        alert("⚠️ Veuillez saisir les heures de début et de fin (obligatoires entre 8h-18h).");
+        return;
+      }
+      
+      const payloadBase: CreateTaskInput = {
+        domainId: validatedData.domainId,
+        title: validatedData.title,
+        description: validatedData.description ?? null,
+        date: toISODate(validatedData.date),
+        startTime: validatedData.startTime,
+        endTime: validatedData.endTime,
+      };
+      
+      console.log("🚀 Payload final:", payloadBase);
+      
+      if (validatedData.addDetailedReport) {
+        console.log("📝 Passage à l'étape 2 (rapport détaillé)");
+        setStep(2);
+      } else {
+        console.log("💾 Création directe de la tâche");
+        await onCreate(payloadBase);
+      }
+    } catch (error) {
+      console.error("❌ Erreur lors de la soumission:", error);
+      if (error instanceof Error) {
+        alert(`🚫 Erreur de validation : ${error.message}`);
+      } else {
+        alert("🚫 Erreur inconnue lors de la création de la tâche");
+      }
     }
   };
 
@@ -391,31 +465,39 @@ export function CreateProjectWizard({
             </Label>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <Label htmlFor="startTime">Heure de début</Label>
+                <Label htmlFor="startTime">🕐 Heure de début</Label>
                 <Input
                   id="startTime"
                   type="time"
+                  min="08:00"
+                  max="17:59"
                   placeholder="08:00"
+                  className="border-2 focus:border-blue-500"
                   aria-invalid={!!form.formState.errors.startTime}
                   aria-describedby={form.formState.errors.startTime ? "startTime-error" : undefined}
                   {...form.register("startTime")}
                 />
+                <span className="text-xs text-gray-500">Entre 8h00 et 17h59</span>
                 {form.formState.errors.startTime && (
-                  <span id="startTime-error" role="alert" className="text-sm text-red-600">
+                  <span id="startTime-error" role="alert" className="text-sm text-red-600 font-medium">
                     {form.formState.errors.startTime.message as string}
                   </span>
                 )}
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="endTime">Heure de fin</Label>
+                <Label htmlFor="endTime">🕕 Heure de fin</Label>
                 <Input
                   id="endTime"
                   type="time"
+                  min="08:01"
+                  max="18:00"
                   placeholder="17:00"
+                  className="border-2 focus:border-blue-500"
                   aria-invalid={!!form.formState.errors.endTime}
                   aria-describedby={form.formState.errors.endTime ? "endTime-error" : undefined}
                   {...form.register("endTime")}
                 />
+                <span className="text-xs text-gray-500">Entre 8h01 et 18h00</span>
                 {form.formState.errors.endTime && (
                   <span id="endTime-error" role="alert" className="text-sm text-red-600">
                     {form.formState.errors.endTime.message as string}
@@ -423,9 +505,21 @@ export function CreateProjectWizard({
                 )}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              💡 Saisissez vos heures de début et de fin. La durée sera calculée automatiquement.
-            </p>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <span className="text-blue-600 dark:text-blue-400 text-sm">ℹ️</span>
+                <div className="text-xs text-blue-700 dark:text-blue-300">
+                  <p className="font-medium mb-1">Règles des heures de travail :</p>
+                  <ul className="space-y-1 text-xs">
+                    <li>• <strong>Début :</strong> Entre 8h00 et 17h59</li>
+                    <li>• <strong>Fin :</strong> Entre 8h01 et 18h00</li>
+                    <li>• <strong>Durée minimale :</strong> 15 minutes</li>
+                    <li>• <strong>Durée maximale :</strong> 10 heures (8h00-18h00)</li>
+                    <li>• <strong>Exemple valide :</strong> 8h00-17h00 (9h avec pause)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -438,8 +532,25 @@ export function CreateProjectWizard({
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onCancel}>Annuler</Button>
-            <Button type="submit" variant="accent">
-              {form.watch("addDetailedReport") ? "Suivant" : "Créer le projet"}
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                console.log("🔍 Debug - Valeurs actuelles:", form.getValues());
+                console.log("🔍 Debug - Erreurs:", form.formState.errors);
+                console.log("🔍 Debug - État du formulaire:", {
+                  isValid: form.formState.isValid,
+                  isDirty: form.formState.isDirty,
+                  isSubmitting: form.formState.isSubmitting
+                });
+              }}
+              className="text-xs"
+            >
+              🐛 Debug
+            </Button>
+            <Button type="submit" variant="accent" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "⏳ Création..." : 
+               form.watch("addDetailedReport") ? "Suivant" : "Créer le projet"}
             </Button>
           </div>
         </form>

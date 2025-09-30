@@ -52,6 +52,10 @@ export async function rejectTask(id: string, reason: string): Promise<Task> {
   return await apiPost<{ reason: string }, Task>(`/timesheet/tasks/${id}/reject`, { reason }, undefined, { auth: true });
 }
 
+export async function requestTaskRevision(id: string, note: string): Promise<Task> {
+  return await apiPost<{ note: string }, Task>(`/timesheet/tasks/${id}/request-revision`, { note }, undefined, { auth: true });
+}
+
 export async function getTaskPdfBase64(id: string): Promise<{ contentType: string; data: string }> {
   return await apiGet<{ contentType: string; data: string }>(`/timesheet/tasks/${id}/pdf`, { auth: true });
 }

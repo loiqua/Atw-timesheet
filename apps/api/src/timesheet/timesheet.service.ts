@@ -9,9 +9,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks.query.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, NotificationType } from '@prisma/client';
 import { PdfService } from './utils/pdf.service';
 import { calculateTimeInfo, isValidTimeRange } from './utils/time.utils';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Injectable()
 export class TimesheetService {
@@ -19,6 +21,8 @@ export class TimesheetService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly pdfService: PdfService,
+    private readonly notificationsService: NotificationsService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   private isJsonObject(
@@ -146,33 +150,191 @@ export class TimesheetService {
 
   async approveTask(adminUserId: string, taskId: string, note?: string) {
     await this.ensureAdmin(adminUserId);
-    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: { user: { select: { fullName: true } } },
+    });
+
     if (!task) throw new NotFoundException('Task not found');
     if (task.status !== 'SUBMITTED') {
       throw new BadRequestException('Only submitted tasks can be approved');
     }
-    return this.prisma.task.update({
+
+    // Get admin info for notification
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminUserId },
+      select: { fullName: true },
+    });
+
+    // Update task status
+    const updatedTask = await this.prisma.task.update({
       where: { id: taskId },
       data: { status: 'APPROVED', managerNote: note ?? null },
     });
+
+    // Create and send notification
+    try {
+      const notification =
+        await this.notificationsService.createTaskNotification(
+          task.userId,
+          'TASK_APPROVED' as NotificationType,
+          taskId,
+          task.title,
+          note,
+          admin?.fullName,
+        );
+
+      // Send real-time notification
+      this.notificationsGateway.sendNotificationToUser(
+        task.userId,
+        notification,
+      );
+
+      this.logger.log(
+        `Task ${taskId} approved and notification sent to user ${task.userId}`,
+      );
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to send approval notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      // Don't fail the approval if notification fails
+    }
+
+    return updatedTask;
   }
 
   async rejectTask(adminUserId: string, taskId: string, reason?: string) {
     await this.ensureAdmin(adminUserId);
+
     // Rendre le commentaire optionnel avec une valeur par défaut
     const finalReason =
       reason && reason.trim().length >= 3
         ? reason
         : "Rejeté par l'administrateur";
-    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: { user: { select: { fullName: true } } },
+    });
+
     if (!task) throw new NotFoundException('Task not found');
     if (task.status !== 'SUBMITTED') {
       throw new BadRequestException('Only submitted tasks can be rejected');
     }
-    return this.prisma.task.update({
+
+    // Get admin info for notification
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminUserId },
+      select: { fullName: true },
+    });
+
+    // Update task status
+    const updatedTask = await this.prisma.task.update({
       where: { id: taskId },
       data: { status: 'REJECTED', managerNote: finalReason },
     });
+
+    // Create and send notification
+    try {
+      const notification =
+        await this.notificationsService.createTaskNotification(
+          task.userId,
+          'TASK_REJECTED' as NotificationType,
+          taskId,
+          task.title,
+          finalReason,
+          admin?.fullName,
+        );
+
+      // Send real-time notification
+      this.notificationsGateway.sendNotificationToUser(
+        task.userId,
+        notification,
+      );
+
+      this.logger.log(
+        `Task ${taskId} rejected and notification sent to user ${task.userId}`,
+      );
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to send rejection notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      // Don't fail the rejection if notification fails
+    }
+
+    return updatedTask;
+  }
+
+  async requestTaskRevision(
+    adminUserId: string,
+    taskId: string,
+    revisionNote: string,
+  ) {
+    await this.ensureAdmin(adminUserId);
+
+    if (!revisionNote || revisionNote.trim().length < 3) {
+      throw new BadRequestException(
+        'Revision note is required and must be at least 3 characters',
+      );
+    }
+
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: { user: { select: { fullName: true } } },
+    });
+
+    if (!task) throw new NotFoundException('Task not found');
+    if (task.status !== 'SUBMITTED') {
+      throw new BadRequestException(
+        'Only submitted tasks can be sent for revision',
+      );
+    }
+
+    // Get admin info for notification
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminUserId },
+      select: { fullName: true },
+    });
+
+    // Update task status to NEEDS_REVISION and reset to DRAFT for editing
+    const updatedTask = await this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        status: 'DRAFT', // Reset to DRAFT so user can edit
+        managerNote: revisionNote.trim(),
+      },
+    });
+
+    // Create and send notification
+    try {
+      const notification =
+        await this.notificationsService.createTaskNotification(
+          task.userId,
+          'TASK_NEEDS_REVISION' as NotificationType,
+          taskId,
+          task.title,
+          revisionNote.trim(),
+          admin?.fullName,
+        );
+
+      // Send real-time notification
+      this.notificationsGateway.sendNotificationToUser(
+        task.userId,
+        notification,
+      );
+
+      this.logger.log(
+        `Task ${taskId} sent for revision and notification sent to user ${task.userId}`,
+      );
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to send revision notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      // Don't fail the revision request if notification fails
+    }
+
+    return updatedTask;
   }
 
   async getTaskById(
@@ -316,14 +478,14 @@ export class TimesheetService {
       include: { user: { select: { id: true, role: true } } },
     });
     if (!task) throw new NotFoundException('Task not found');
-    
+
     const isOwner = task.userId === userId;
-    
+
     // Seul le propriétaire peut éditer (même les admins ne peuvent pas éditer les tâches des autres)
     if (!isOwner) {
       throw new ForbiddenException('You can only edit your own tasks');
     }
-    
+
     if (task.status !== 'DRAFT') {
       throw new BadRequestException('Only draft tasks can be edited');
     }

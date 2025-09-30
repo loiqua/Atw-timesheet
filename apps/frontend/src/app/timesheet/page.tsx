@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { Download, Trash2, Check, X, RefreshCw, Filter, ChevronDown, ChevronUp, Edit } from "lucide-react";
+import { Download, Trash2, Check, X, RefreshCw, Filter, ChevronDown, ChevronUp, Edit, RotateCcw } from "lucide-react";
 
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import {
   listTasks,
   listUsers,
   rejectTask,
+  requestTaskRevision,
   submitTask,
   type Domain,
 } from "@/features/timesheet/api";
@@ -50,7 +51,10 @@ export default function TimesheetPage() {
 
   // filters
   const [title, setTitle] = useState("");
-  const [status, setStatus] = useState<TaskStatus | undefined>(undefined);
+  const [status, setStatus] = useState<TaskStatus | undefined>(
+    // Pour les admin, statut SUBMITTED par défaut
+    (role === "ADMIN" || role === "MANAGER") ? "SUBMITTED" : undefined
+  );
   const [domainId, setDomainId] = useState<string | undefined>(undefined);
   const [userScope, setUserScope] = useState<"me" | "all" | "specific">("all");
   const [userId, setUserId] = useState<string | undefined>(undefined);
@@ -167,6 +171,15 @@ export default function TimesheetPage() {
     onError: (error) => {
       console.error('Erreur rejet:', error);
       alert('Erreur lors du rejet de la tâche');
+    },
+  });
+
+  const mutateRequestRevision = useMutation({
+    mutationFn: ({ id, note }: { id: string; note: string }) => requestTaskRevision(id, note),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+    onError: (error) => {
+      console.error('Erreur demande révision:', error);
+      alert('Erreur lors de la demande de révision');
     },
   });
   const mutateDelete = useMutation({
@@ -530,6 +543,16 @@ export default function TimesheetPage() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => mutateSubmit.mutate(t.id)}
+                            disabled={mutateSubmit.isPending}
+                            className="h-8 w-8 p-0 rounded-full border-2 border-green-300 text-green-600 hover:bg-green-500 hover:text-white hover:border-green-500 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Soumettre"
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleEditTask(t)}
                             className="h-8 w-8 p-0 rounded-full border-2 border-blue-300 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
                             title="Modifier"
@@ -558,6 +581,19 @@ export default function TimesheetPage() {
                             title="Approuver"
                           >
                             <Check className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const note = window.prompt("Note de révision");
+                              if (note && note.trim().length >= 3) mutateRequestRevision.mutate({ id: t.id, note });
+                            }}
+                            disabled={mutateRequestRevision.isPending}
+                            className="h-8 w-8 p-0 rounded-full border-2 border-blue-300 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Demander révision"
+                          >
+                            <RotateCcw className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="outline"
@@ -662,6 +698,19 @@ export default function TimesheetPage() {
                           title="Approuver"
                         >
                           <Check className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const note = window.prompt("Note de révision");
+                            if (note && note.trim().length >= 3) mutateRequestRevision.mutate({ id: t.id, note });
+                          }}
+                          disabled={mutateRequestRevision.isPending}
+                          className="h-8 w-8 p-0 rounded-full border-2 border-blue-300 text-blue-600 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Demander révision"
+                        >
+                          <RotateCcw className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="outline"

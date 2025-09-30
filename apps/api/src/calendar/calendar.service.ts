@@ -34,6 +34,8 @@ export class CalendarService {
   ): Promise<CalendarWeekResponseDto> {
     const { weekStartDate, userId, domainId, status } = query;
 
+    // Debug logs removed for production
+
     if (!weekStartDate) {
       throw new Error('weekStartDate est requis');
     }
@@ -44,14 +46,15 @@ export class CalendarService {
     endDate.setDate(startDate.getDate() + 6);
     endDate.setHours(23, 59, 59, 999);
 
-    // Déterminer les filtres selon les permissions
+    // Déterminer les filtres selon les permissions - POLITIQUE STRICTE
     const isAdmin = userRole === 'ADMIN';
     const isManager = userRole === 'MANAGER';
     const canViewAllUsers = isAdmin || isManager;
 
     let userFilter: { userId?: string } = {};
     if (!canViewAllUsers) {
-      // Les utilisateurs normaux ne voient que leurs propres tâches
+      // 🔒 RESTRICTION STRICTE: Les utilisateurs normaux ne voient QUE leurs propres tâches
+      // Ignorer complètement le paramètre userId du query pour les non-admin
       userFilter = { userId: requestUserId };
     } else if (userId) {
       // Les admins/managers peuvent filtrer par utilisateur
@@ -68,6 +71,8 @@ export class CalendarService {
       ...(domainId && { domainId }),
       ...(status && { status }),
     };
+
+    // Prisma query logs removed for production
 
     // Récupérer les tâches
     const tasks = await this.prisma.task.findMany({
@@ -90,37 +95,47 @@ export class CalendarService {
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     });
 
+    // Task details logs removed for production
+
     // Générer la structure de la semaine
     const days: CalendarDayDto[] = [];
     for (let i = 0; i < 7; i++) {
       const currentDate = new Date(startDate);
       currentDate.setDate(startDate.getDate() + i);
 
-      const dayTasks = tasks.filter(
-        (task) => task.date.toDateString() === currentDate.toDateString(),
-      );
+      const dayTasks = tasks.filter((task) => {
+        const taskDateStr = task.date.toISOString().split('T')[0];
+        const currentDateStr = currentDate.toISOString().split('T')[0];
+        return taskDateStr === currentDateStr;
+      });
 
-      const timeSlots = dayTasks.map((task) => ({
-        id: `${task.id}-${task.date.toISOString()}`,
-        taskId: task.id,
-        userId: task.user.id,
-        userName: task.user.fullName,
-        userInitials: this.generateInitials(task.user.fullName),
-        projectId: task.id, // Utiliser l'ID de la tâche comme projectId pour l'instant
-        projectName: task.title,
-        domainId: task.domain.id,
-        domainName: task.domain.name,
-        domainColor: '#3B82F6', // Couleur par défaut, à adapter selon vos besoins
-        startTime: task.startTime ?? '08:00',
-        endTime: task.endTime ?? '17:00',
-        date: currentDate.toISOString().split('T')[0],
-        status: task.status,
-        description: task.description ?? undefined,
-        hoursWorked: this.calculateHours(
-          task.startTime ?? '08:00',
-          task.endTime ?? '17:00',
-        ),
-      }));
+      // Day filtering logs removed for production
+
+      const timeSlots = dayTasks.map((task) => {
+        const startTime = task.startTime ?? '08:00';
+        const endTime = task.endTime ?? '17:00';
+
+        // Task time logs removed for production
+
+        return {
+          id: `${task.id}-${task.date.toISOString()}`,
+          taskId: task.id,
+          userId: task.user.id,
+          userName: task.user.fullName,
+          userInitials: this.generateInitials(task.user.fullName),
+          projectId: task.id, // Utiliser l'ID de la tâche comme projectId pour l'instant
+          projectName: task.title,
+          domainId: task.domain.id,
+          domainName: task.domain.name,
+          domainColor: '#3B82F6', // Couleur par défaut, à adapter selon vos besoins
+          startTime,
+          endTime,
+          date: currentDate.toISOString().split('T')[0],
+          status: task.status,
+          description: task.description ?? undefined,
+          hoursWorked: this.calculateHours(startTime, endTime),
+        };
+      });
 
       days.push({
         date: currentDate.toISOString().split('T')[0],
@@ -160,6 +175,7 @@ export class CalendarService {
 
     let userFilter: { userId?: string } = {};
     if (!canViewAllUsers) {
+      // 🔒 RESTRICTION STRICTE: Les utilisateurs normaux ne voient QUE leurs statistiques
       userFilter = { userId: requestUserId };
     } else if (userId) {
       userFilter = { userId };
@@ -239,8 +255,28 @@ export class CalendarService {
     }));
   }
 
-  async getDomains(): Promise<CalendarDomainResponseDto[]> {
+  async getDomains(
+    requestUserId?: string,
+    userRole?: string,
+  ): Promise<CalendarDomainResponseDto[]> {
+    const isAdmin = userRole === 'ADMIN';
+    const isManager = userRole === 'MANAGER';
+    const canViewAllDomains = isAdmin || isManager;
+
+    let whereClause = {};
+    if (!canViewAllDomains && requestUserId) {
+      // 🔒 RESTRICTION: Les utilisateurs normaux ne voient que les domaines où ils ont des tâches
+      whereClause = {
+        tasks: {
+          some: {
+            userId: requestUserId,
+          },
+        },
+      };
+    }
+
     const domains = await this.prisma.domain.findMany({
+      where: whereClause,
       select: {
         id: true,
         name: true,

@@ -1,13 +1,21 @@
 "use client";
 
+import { useRouter } from 'next/navigation';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"; // Assuming shadcn/ui sheet is set up
 import { Menu } from "lucide-react";
 import MobileSidebar from "./MobileSidebar";
 import { useAuthStore } from "@/lib/auth-store";
 import { toInitials, roleLabel } from "@/lib/utils";
+import { NotificationBell } from "@/components/notifications";
 
 const Header = () => {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
+
+  const handleViewTask = (taskId: string) => {
+    router.push(`/timesheet?taskId=${taskId}`);
+  };
+
   return (
     <header className="flex items-center justify-between lg:justify-end h-16 px-4 lg:px-8 bg-white border-b">
       <div className="lg:hidden">
@@ -31,6 +39,9 @@ const Header = () => {
         </Sheet>
       </div>
       <div className="flex items-center gap-4">
+        {/* Notifications Bell */}
+        <NotificationBell onViewTask={handleViewTask} />
+        
         <div
           className="h-10 w-10 rounded-full bg-blue-600 text-white grid place-items-center font-semibold"
           aria-label="Avatar utilisateur"

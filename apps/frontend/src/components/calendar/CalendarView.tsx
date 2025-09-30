@@ -29,18 +29,41 @@ import type { CalendarFilters, TaskStatus } from '@/types/calendar';
 
 export const CalendarView: React.FC = () => {
   const { user } = useAuthStore();
-  const [filters, setFilters] = useState<CalendarFilters>({
-    weekStartDate: calendarService.getCurrentWeekStart(),
-  });
-
+  
   const isAdmin = user?.role === 'ADMIN';
   const isManager = user?.role === 'MANAGER';
   const canViewAllUsers = isAdmin || isManager;
+  
+  const [filters, setFilters] = useState<CalendarFilters>({
+    weekStartDate: calendarService.getCurrentWeekStart(),
+    // 🔒 RESTRICTION STRICTE: Les utilisateurs normaux sont FORCÉS à voir uniquement leurs tâches
+    ...(canViewAllUsers ? {} : { userId: user?.id }),
+  });
+
+  // Debug: log des informations utilisateur
+  console.log('🔍 Calendar Debug:', {
+    user: user,
+    role: user?.role,
+    canViewAllUsers,
+    filters
+  });
 
   // Queries
+  // 🔒 SÉCURITÉ: Forcer les filtres pour les utilisateurs normaux
+  const secureFilters = React.useMemo(() => {
+    if (!canViewAllUsers && user?.id) {
+      // Les utilisateurs normaux ne peuvent PAS changer le filtre utilisateur
+      return {
+        ...filters,
+        userId: user.id, // Toujours forcer leur propre ID
+      };
+    }
+    return filters;
+  }, [filters, canViewAllUsers, user?.id]);
+
   const { data: weekData, isLoading: weekLoading } = useQuery({
-    queryKey: ['calendar-week', filters],
-    queryFn: () => calendarService.getWeekData(filters),
+    queryKey: ['calendar-week', secureFilters],
+    queryFn: () => calendarService.getWeekData(secureFilters),
   });
 
   const { data: users } = useQuery({
@@ -55,8 +78,8 @@ export const CalendarView: React.FC = () => {
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['calendar-stats', filters],
-    queryFn: () => calendarService.getWeekStats(filters),
+    queryKey: ['calendar-stats', secureFilters],
+    queryFn: () => calendarService.getWeekStats(secureFilters),
   });
 
   const handlePreviousWeek = () => {
@@ -94,10 +117,13 @@ export const CalendarView: React.FC = () => {
       <div className="flex flex-col gap-3 sm:gap-4">
         <div>
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
-            Calendrier des Timesheets
+            {canViewAllUsers ? 'Calendrier des Timesheets' : 'Mon Calendrier'}
           </h1>
           <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-400">
-            Visualisation hebdomadaire des créneaux de travail
+            {canViewAllUsers 
+              ? 'Visualisation hebdomadaire des créneaux de travail' 
+              : '🔒 Visualisation de vos créneaux de travail personnels'
+            }
           </p>
         </div>
 
@@ -181,39 +207,75 @@ export const CalendarView: React.FC = () => {
 
             {/* Ligne 2: Filtres domaine et statut */}
             <div className="flex flex-col sm:flex-row gap-3">
-              {/* Filtre domaine */}
-              <Select
-                value={filters.domainId ?? "all"}
-                onValueChange={(value) => 
-                  setFilters(prev => ({ 
-                    ...prev, 
-                    domainId: value === "all" ? undefined : value 
-                  }))
-                }
-              >
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Tous les domaines" />
-                </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
-                    Tous les domaines
-                  </div>
-                </SelectItem>
-                {domains?.map((domain) => (
-                  <SelectItem key={domain.id} value={domain.id}>
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="h-3 w-3 rounded-full" 
-                        style={{ backgroundColor: domain.color }}
-                      />
-                      {domain.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {/* Filtre domaine - Visible pour tous mais restreint pour les utilisateurs normaux */}
+              {canViewAllUsers ? (
+                <Select
+                  value={filters.domainId ?? "all"}
+                  onValueChange={(value) => 
+                    setFilters(prev => ({ 
+                      ...prev, 
+                      domainId: value === "all" ? undefined : value 
+                    }))
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Tous les domaines" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4" />
+                        Tous les domaines
+                      </div>
+                    </SelectItem>
+                    {domains?.map((domain) => (
+                      <SelectItem key={domain.id} value={domain.id}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="h-3 w-3 rounded-full" 
+                            style={{ backgroundColor: domain.color }}
+                          />
+                          {domain.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                // 🔒 Pour les utilisateurs normaux: Filtre domaine restreint à leurs domaines uniquement
+                <Select
+                  value={filters.domainId ?? "all"}
+                  onValueChange={(value) => 
+                    setFilters(prev => ({ 
+                      ...prev, 
+                      domainId: value === "all" ? undefined : value 
+                    }))
+                  }
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Mes domaines" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4" />
+                        Mes domaines
+                      </div>
+                    </SelectItem>
+                    {domains?.map((domain) => (
+                      <SelectItem key={domain.id} value={domain.id}>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="h-3 w-3 rounded-full" 
+                            style={{ backgroundColor: domain.color }}
+                          />
+                          {domain.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
             {/* Filtre statut */}
             <Select

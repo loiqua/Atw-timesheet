@@ -156,6 +156,47 @@ export class TimesheetController {
     }
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post('tasks/:id/request-revision')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Request revision for a SUBMITTED task (admin only)',
+    description: 'Sends task back to DRAFT status with revision notes',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Task ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Task sent for revision successfully',
+  })
+  async requestRevision(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Body() body: { note: string },
+    @Request() req: AuthRequest,
+  ) {
+    console.log('🔍 Requesting revision for task:', {
+      id,
+      body,
+      userRole: req.user.role,
+    });
+    try {
+      const result = await this.service.requestTaskRevision(
+        req.user.id,
+        id,
+        body.note,
+      );
+      console.log('✅ Task sent for revision successfully:', result.id);
+      return result;
+    } catch (error) {
+      console.error('❌ Error requesting task revision:', error);
+      throw error;
+    }
+  }
+
   @Get('tasks/:id/pdf')
   @ApiOperation({ summary: 'Download PDF summary for a task (owner or admin)' })
   @ApiResponse({ status: 200, description: 'Returns base64 encoded PDF' })

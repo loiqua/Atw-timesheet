@@ -31,13 +31,7 @@ import { CalendarStatsResponseDto } from './dto/calendar-stats-response.dto';
 import { CalendarUserResponseDto } from './dto/calendar-user-response.dto';
 import { CalendarDomainResponseDto } from './dto/calendar-domain-response.dto';
 import { CalendarTimeSlotResponseDto } from './dto/calendar-timeslot-response.dto';
-
-interface AuthenticatedRequest {
-  user: {
-    userId: string;
-    role: string;
-  };
-}
+import type { AuthRequest } from '../auth/types/auth-request.type';
 
 @ApiTags('Calendar')
 @Controller('calendar')
@@ -57,10 +51,10 @@ export class CalendarController {
   })
   async getWeekData(
     @Query() query: CalendarWeekQueryDto,
-    @Request() req: AuthenticatedRequest,
+    @Request() req: AuthRequest,
   ): Promise<CalendarWeekResponseDto> {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.id;
       const userRole = req.user.role;
 
       return await this.calendarService.getWeekData(query, userId, userRole);
@@ -81,10 +75,10 @@ export class CalendarController {
   })
   async getWeekStats(
     @Query() query: CalendarStatsQueryDto,
-    @Request() req: AuthenticatedRequest,
+    @Request() req: AuthRequest,
   ): Promise<CalendarStatsResponseDto> {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.id;
       const userRole = req.user.role;
 
       return await this.calendarService.getWeekStats(query, userId, userRole);
@@ -125,9 +119,14 @@ export class CalendarController {
     description: 'Liste des domaines récupérée avec succès',
     type: [CalendarDomainResponseDto],
   })
-  async getDomains(): Promise<CalendarDomainResponseDto[]> {
+  async getDomains(
+    @Request() req: AuthRequest,
+  ): Promise<CalendarDomainResponseDto[]> {
     try {
-      return await this.calendarService.getDomains();
+      const userId = req.user.id;
+      const userRole = req.user.role;
+
+      return await this.calendarService.getDomains(userId, userRole);
     } catch {
       throw new HttpException(
         'Erreur lors de la récupération des domaines',
@@ -145,10 +144,10 @@ export class CalendarController {
   })
   async getTimeSlotDetails(
     @Param('id') timeSlotId: string,
-    @Request() req: AuthenticatedRequest,
+    @Request() req: AuthRequest,
   ): Promise<CalendarTimeSlotResponseDto> {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.id;
       const userRole = req.user.role;
 
       return await this.calendarService.getTimeSlotDetails(
@@ -177,10 +176,10 @@ export class CalendarController {
   async updateTaskStatus(
     @Param('id') taskId: string,
     @Body() updateTaskStatusDto: UpdateTaskStatusDto,
-    @Request() req: AuthenticatedRequest,
+    @Request() req: AuthRequest,
   ): Promise<{ message: string }> {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.id;
       const userRole = req.user.role;
 
       // Validation et type assertion sécurisée

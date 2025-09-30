@@ -21,14 +21,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
-
-interface AuthenticatedRequest extends Request {
-  user: {
-    id: string;
-    email: string;
-    role: Role;
-  };
-}
+import type { AuthRequest } from '../auth/types/auth-request.type';
 
 @ApiTags('Users')
 @ApiBearerAuth('JWT-auth')
@@ -80,7 +73,7 @@ export class UsersController {
   async updateUserRole(
     @Param('id') userId: string,
     @Body() updateUserRoleDto: UpdateUserRoleDto,
-    @Request() req: AuthenticatedRequest,
+    @Request() req: AuthRequest,
   ): Promise<UserResponse> {
     return this.usersService.updateUserRole(
       { ...updateUserRoleDto, userId },
@@ -99,7 +92,7 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async deactivateUser(
     @Param('id') userId: string,
-    @Request() req: AuthenticatedRequest,
+    @Request() req: AuthRequest,
   ): Promise<UserResponse> {
     return this.usersService.deactivateUser(userId, req.user.id);
   }
@@ -115,7 +108,7 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async activateUser(
     @Param('id') userId: string,
-    @Request() req: AuthenticatedRequest,
+    @Request() req: AuthRequest,
   ): Promise<UserResponse> {
     return this.usersService.activateUser(userId, req.user.id);
   }

@@ -8,8 +8,11 @@ import {
   IsString,
   IsUUID,
   Min,
+  Matches,
+  Validate,
 } from 'class-validator';
 import { ReportType } from '@prisma/client';
+import { WorkingHoursValidator } from './create-task.dto';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -33,6 +36,23 @@ export class UpdateTaskDto {
   @IsInt()
   @Min(0)
   durationMin?: number;
+
+  // 🔒 Nouveau système d'heures avec validation 8h-18h
+  @IsOptional()
+  @IsString()
+  @Matches(/^([0-1]?\d|2[0-3]):[0-5]\d$/, {
+    message: "Format d'heure invalide. Attendu: HH:mm",
+  })
+  @Validate(WorkingHoursValidator)
+  startTime?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^([0-1]?\d|2[0-3]):[0-5]\d$/, {
+    message: "Format d'heure invalide. Attendu: HH:mm",
+  })
+  @Validate(WorkingHoursValidator)
+  endTime?: string;
 
   @IsOptional()
   @IsEnum(ReportType)

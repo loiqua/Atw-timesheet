@@ -27,6 +27,7 @@ enum TaskStatus {
   SUBMITTED
   APPROVED
   REJECTED
+  NEEDS_REVISION
 }
 
 enum PresenceStatus {
@@ -38,6 +39,14 @@ enum PresenceStatus {
 enum ReportType {
   STANDARD
   CUSTOM
+}
+
+enum NotificationType {
+  TASK_APPROVED
+  TASK_REJECTED
+  TASK_NEEDS_REVISION
+  DEADLINE_REMINDER
+  SYSTEM_ANNOUNCEMENT
 }
 
 // Models
@@ -62,6 +71,7 @@ model User {
   presences     Presence[]
   managedDomains ManagerDomain[]
   roleAssignments RoleAssignment[]
+  notifications Notification[]
   domainId      String? // domaine principal (optionnel)
   domain        Domain? @relation(fields: [domainId], references: [id])
 
@@ -124,6 +134,7 @@ model Task {
   domain   Domain @relation(fields: [domainId], references: [id])
   location Location?
   report   Report?
+  notifications Notification[]
 
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
@@ -170,4 +181,31 @@ model RoleAssignment {
   @@index([validFrom])
   @@index([validTo])
   @@index([userId, role, scope])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  
+  // Relations optionnelles
+  relatedTaskId String?
+  relatedTask   Task?   @relation(fields: [relatedTaskId], references: [id], onDelete: Cascade)
+  
+  // Métadonnées JSON pour informations additionnelles
+  metadata  Json?
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([userId, isRead])
 }

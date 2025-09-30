@@ -11,6 +11,7 @@ export interface AuthenticatedUser {
   role: Role;
   isActive: boolean;
   domainId: string | null;
+  domain?: { id: string; name: string; slug: string } | null;
   lastLogin: Date | null;
   createdAt: Date;
   updatedAt: Date;

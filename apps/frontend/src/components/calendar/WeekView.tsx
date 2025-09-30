@@ -73,11 +73,27 @@ export const WeekView: React.FC<WeekViewProps> = ({
     if (!day) return [];
     
     return day.timeSlots.filter(slot => {
-      const slotStartHour = parseInt(slot.startTime.split(':')[0]);
-      const timeSlotHour = parseInt(timeSlot.split(':')[0]);
-      const slotEndHour = parseInt(slot.endTime.split(':')[0]);
+      // Convertir les heures en minutes pour une comparaison plus précise
+      const parseTime = (time: string) => {
+        const [hours, minutes] = time.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
       
-      return slotStartHour <= timeSlotHour && timeSlotHour < slotEndHour;
+      const slotStartMinutes = parseTime(slot.startTime);
+      const slotEndMinutes = parseTime(slot.endTime);
+      const timeSlotMinutes = parseTime(timeSlot);
+      const nextHourMinutes = timeSlotMinutes + 60;
+      
+      // Une tâche apparaît dans un créneau horaire si elle chevauche avec ce créneau
+      // Créneau: 10:00-11:00, Tâche: 10:22-10:25 → OUI
+      // Créneau: 11:00-12:00, Tâche: 10:22-10:25 → NON
+      const taskOverlapsSlot = (
+        slotStartMinutes < nextHourMinutes && slotEndMinutes > timeSlotMinutes
+      );
+      
+      // Desktop filtering logs removed for production
+      
+      return taskOverlapsSlot;
     });
   };
 
