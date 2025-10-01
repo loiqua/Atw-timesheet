@@ -61,6 +61,7 @@ export class PdfService {
         actions: 'Actions',
         leads: 'Pistes',
         meetings: 'Réunions',
+        comments: 'Observations / Commentaires',
       },
     };
   }
@@ -257,7 +258,7 @@ export class PdfService {
         return true;
       })
       .sort(([a], [b]) => {
-        // Prioritize known fields first
+        // Prioritize known fields first, with comments at the end
         const knownFields = [
           'firstName',
           'lastName',
@@ -266,6 +267,11 @@ export class PdfService {
           'personsMet',
           'contactPoints',
         ];
+
+        // Comments should appear last
+        if (a === 'comments') return 1;
+        if (b === 'comments') return -1;
+
         const aIndex = knownFields.indexOf(a);
         const bIndex = knownFields.indexOf(b);
         if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;

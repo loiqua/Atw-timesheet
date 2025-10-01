@@ -325,6 +325,8 @@ export function CreateProjectWizard({
         customCategoryName: category === "Custom" ? customCategoryName : undefined,
         ...reportFields,
         ...customObj,
+        // Ajouter les commentaires/observations
+        ...(comments.trim() && { comments: comments.trim() }),
       },
     };
     

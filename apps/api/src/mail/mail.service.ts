@@ -10,7 +10,8 @@ export class MailService {
   ) {}
 
   async sendResetPasswordEmail(email: string, token: string) {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
     const resetLink = `${frontendUrl}/auth/reset-password?token=${token}`;
     await this.mailerService.sendMail({
       to: email,

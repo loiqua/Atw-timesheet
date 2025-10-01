@@ -1,0 +1,25 @@
+# Fichiers Android à ajouter au .gitignore
+
+# Clés de signature (TRÈS IMPORTANT - NE JAMAIS COMMITER)
+*.keystore
+*.jks
+key.properties
+keystore.properties
+
+# Dossiers Android
+android/
+.gradle/
+build/
+.idea/
+*.iml
+local.properties
+
+# Capacitor
+.capacitor/
+capacitor.config.json
+
+# Fichiers de build
+*.apk
+*.aab
+*.ap_
+*.dex
