@@ -24,16 +24,16 @@ export class WorkingHoursValidator implements ValidatorConstraintInterface {
     const [hours, minutes] = time.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes;
 
-    // Heure de début : 8h00 à 17h59 (480 à 1079 minutes)
-    // Heure de fin : 8h01 à 18h00 (481 à 1080 minutes)
-    const minTime = 8 * 60; // 8h00 = 480 minutes
-    const maxTime = 18 * 60; // 18h00 = 1080 minutes
+    // Heures autorisées : 05h00 à 22h00 (300 à 1320 minutes)
+    // La validation ici est générique pour startTime et endTime
+    const minTime = 5 * 60; // 05h00 = 300 minutes
+    const maxTime = 22 * 60; // 22h00 = 1320 minutes
 
     return totalMinutes >= minTime && totalMinutes <= maxTime;
   }
 
   defaultMessage(): string {
-    return '🚫 Heures de travail autorisées : 8h00 à 18h00 uniquement';
+    return '🚫 Heures de travail autorisées : 05h00 à 22h00 uniquement';
   }
 }
 

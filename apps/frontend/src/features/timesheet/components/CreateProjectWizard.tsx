@@ -6,10 +6,19 @@ import { z } from "zod";
 import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { 
+  Select, 
+  SelectTrigger, 
+  SelectContent, 
+  SelectItem, 
+  SelectValue 
+} from "@/components/ui/select";
 
 import { Button } from "@/components/ui/button";
 import { OfflineStorageService } from "@/lib/offline-storage";
 import type { CreateTaskInput } from "@/features/timesheet/types";
+import { reportTemplates } from "@/components/timesheet/report-templates";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Domain {
   id: string;
@@ -49,12 +58,12 @@ const step1Schema = z.object({
   message: "L'heure de fin doit être postérieure à l'heure de début",
   path: ["endTime"],
 }).refine((data) => {
-  // 🔒 VALIDATION STRICTE: Heure de début entre 8h00 et 17h59
+  // 🔒 VALIDATION STRICTE: Heure de début entre 05h00 et 21h59
   if (data.startTime) {
     const [hours, minutes] = data.startTime.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes;
-    const minTime = 8 * 60; // 8h00 = 480 minutes
-    const maxTime = 18 * 60 - 1; // 17h59 = 1079 minutes
+    const minTime = 5 * 60; // 05h00 = 300 minutes
+    const maxTime = 22 * 60 - 1; // 21h59 = 1319 minutes
     
     if (totalMinutes < minTime || totalMinutes > maxTime) {
       return false;
@@ -62,15 +71,15 @@ const step1Schema = z.object({
   }
   return true;
 }, {
-  message: "🚫 Heure de début invalide ! Doit être entre 8h00 et 17h59",
+  message: "🚫 Heure de début invalide ! Doit être entre 05h00 et 21h59",
   path: ["startTime"],
 }).refine((data) => {
-  // 🔒 VALIDATION STRICTE: Heure de fin entre 8h01 et 18h00
+  // 🔒 VALIDATION STRICTE: Heure de fin entre 05h01 et 22h00
   if (data.endTime) {
     const [hours, minutes] = data.endTime.split(':').map(Number);
     const totalMinutes = hours * 60 + minutes;
-    const minTime = 8 * 60 + 1; // 8h01 = 481 minutes (au moins 1 minute de travail)
-    const maxTime = 18 * 60; // 18h00 = 1080 minutes
+    const minTime = 5 * 60 + 1; // 05h01 = 301 minutes
+    const maxTime = 22 * 60; // 22h00 = 1320 minutes
     
     if (totalMinutes < minTime || totalMinutes > maxTime) {
       return false;
@@ -78,19 +87,19 @@ const step1Schema = z.object({
   }
   return true;
 }, {
-  message: "🚫 Heure de fin invalide ! Doit être entre 8h01 et 18h00",
+  message: "🚫 Heure de fin invalide ! Doit être entre 05h01 et 22h00",
   path: ["endTime"],
 }).refine((data) => {
-  // 🔒 VALIDATION: Durée minimale de 15 minutes
+  // 🔒 VALIDATION: Durée minimale de 5 minutes
   if (data.startTime && data.endTime) {
     const start = new Date(`2000-01-01T${data.startTime}`);
     const end = new Date(`2000-01-01T${data.endTime}`);
     const diffMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
-    return diffMinutes >= 15;
+    return diffMinutes >= 5;
   }
   return true;
 }, {
-  message: "⏰ Durée minimale : 15 minutes de travail",
+  message: "⏰ Durée minimale : 5 minutes de travail",
   path: ["endTime"],
 }).refine((data) => {
   // 🔒 VALIDATION: Durée maximale de 10 heures (8h-18h = 10h max)
@@ -102,19 +111,20 @@ const step1Schema = z.object({
   }
   return true;
 }, {
-  message: "🚫 Durée maximale : 10 heures par jour (8h00-18h00)",
+  message: "🚫 Durée maximale : 10 heures par jour",
   path: ["endTime"],
 });
 
 type Step1Values = z.infer<typeof step1Schema>;
 
 const reportCategories = [
-  { key: "FieldSurvey", label: "Enquête terrain", icon: "🚶", subtitle: "Déplacements, observations sur site" },
-  { key: "CallCenter", label: "Call center", icon: "📞", subtitle: "Appels téléphoniques, enquêtes" },
-  { key: "Training", label: "Formation", icon: "🎓", subtitle: "Sessions, ateliers, évaluations" },
-  { key: "Accounting", label: "Comptabilité", icon: "💰", subtitle: "Audit, vérifications, contrôles" },
-  { key: "Maintenance", label: "Maintenance", icon: "🛠️", subtitle: "Réparations, diagnostics" },
-  { key: "Sales", label: "Commercial", icon: "💼", subtitle: "Prospection, ventes" },
+  { key: "Direction", label: "Direction", icon: "👔", subtitle: "Réunions stratégiques, décisions" },
+  { key: "Studies", label: "Études et Conseil", icon: "📊", subtitle: "Études marketing, analyses" },
+  { key: "IT", label: "Informatique", icon: "💻", subtitle: "Maintenance, développement" },
+  { key: "Finance", label: "Comptabilité et Finance", icon: "💰", subtitle: "Factures, paie, banque" },
+  { key: "Quality", label: "Qualité et Statistiques", icon: "✅", subtitle: "Audit, contrôle données" },
+  { key: "Field", label: "Terrain et Enquêtes", icon: "🚶", subtitle: "Collecte de données terrain" },
+  { key: "Admin", label: "Administration et Support", icon: "📋", subtitle: "Logistique, secrétariat" },
   { key: "Custom", label: "Personnalisé", icon: "✨", subtitle: "Créez vos propres champs" },
 ] as const;
 
@@ -136,8 +146,8 @@ export function CreateProjectWizard({
       title: "Nouvelle tâche",
       description: "",
       date: today,
-      startTime: "08:00", // 🔒 Valeur par défaut logique
-      endTime: "17:00",   // 🔒 Valeur par défaut logique
+      startTime: "08:00", // Valeur par défaut
+      endTime: "17:00",   // Valeur par défaut
       addDetailedReport: false,
     },
     mode: "onChange", // Validation en temps réel
@@ -264,7 +274,7 @@ export function CreateProjectWizard({
       const hasEndTime = validatedData.endTime?.trim();
       
       if (!hasStartTime || !hasEndTime) {
-        alert("⚠️ Veuillez saisir les heures de début et de fin (obligatoires entre 8h-18h).");
+        alert("⚠️ Veuillez saisir les heures de début et de fin (obligatoires entre 05h et 22h).");
         return;
       }
       
@@ -396,23 +406,20 @@ export function CreateProjectWizard({
               Domaine d&apos;activité
             </Label>
             <div className="relative">
-              <select
-                id="domain"
-                className="w-full h-12 rounded-xl border-2 border-gray-200 dark:border-gray-600 px-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white appearance-none cursor-pointer transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 hover:border-gray-300 dark:hover:border-gray-500"
-                aria-invalid={!!form.formState.errors.domainId}
-                aria-describedby={form.formState.errors.domainId ? "domain-error" : undefined}
-                {...form.register("domainId")}
+              <Select
+                value={form.watch("domainId")}
+                onValueChange={(value: string) => form.setValue("domainId", value, { shouldValidate: true })}
               >
-                <option value="">Sélectionner un domaine...</option>
-                {domains.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
+                <SelectTrigger id="domain" aria-invalid={!!form.formState.errors.domainId}>
+                  <SelectValue placeholder="Sélectionner un domaine..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-fit">
+                  {domains.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <input type="hidden" {...form.register("domainId")} value={form.watch("domainId")} />
             </div>
             {form.formState.errors.domainId && (
               <span id="domain-error" role="alert" className="text-sm text-red-600 flex items-center gap-1">
@@ -471,15 +478,16 @@ export function CreateProjectWizard({
                 <Input
                   id="startTime"
                   type="time"
-                  min="08:00"
-                  max="17:59"
-                  placeholder="08:00"
+                  min="05:00"
+                  max="21:59"
+                  step={60}
+                  placeholder="05:00"
                   className="border-2 focus:border-blue-500"
                   aria-invalid={!!form.formState.errors.startTime}
                   aria-describedby={form.formState.errors.startTime ? "startTime-error" : undefined}
                   {...form.register("startTime")}
                 />
-                <span className="text-xs text-gray-500">Entre 8h00 et 17h59</span>
+                <span className="text-xs text-gray-500">Entre 05h00 et 21h59</span>
                 {form.formState.errors.startTime && (
                   <span id="startTime-error" role="alert" className="text-sm text-red-600 font-medium">
                     {form.formState.errors.startTime.message as string}
@@ -491,15 +499,16 @@ export function CreateProjectWizard({
                 <Input
                   id="endTime"
                   type="time"
-                  min="08:01"
-                  max="18:00"
-                  placeholder="17:00"
+                  min="05:01"
+                  max="22:00"
+                  step={60}
+                  placeholder="22:00"
                   className="border-2 focus:border-blue-500"
                   aria-invalid={!!form.formState.errors.endTime}
                   aria-describedby={form.formState.errors.endTime ? "endTime-error" : undefined}
                   {...form.register("endTime")}
                 />
-                <span className="text-xs text-gray-500">Entre 8h01 et 18h00</span>
+                <span className="text-xs text-gray-500">Entre 05h01 et 22h00</span>
                 {form.formState.errors.endTime && (
                   <span id="endTime-error" role="alert" className="text-sm text-red-600">
                     {form.formState.errors.endTime.message as string}
@@ -513,11 +522,11 @@ export function CreateProjectWizard({
                 <div className="text-xs text-blue-700 dark:text-blue-300">
                   <p className="font-medium mb-1">Règles des heures de travail :</p>
                   <ul className="space-y-1 text-xs">
-                    <li>• <strong>Début :</strong> Entre 8h00 et 17h59</li>
-                    <li>• <strong>Fin :</strong> Entre 8h01 et 18h00</li>
-                    <li>• <strong>Durée minimale :</strong> 15 minutes</li>
-                    <li>• <strong>Durée maximale :</strong> 10 heures (8h00-18h00)</li>
-                    <li>• <strong>Exemple valide :</strong> 8h00-17h00 (9h avec pause)</li>
+                    <li>• <strong>Début :</strong> Entre 05h00 et 21h59</li>
+                    <li>• <strong>Fin :</strong> Entre 05h01 et 22h00</li>
+                    <li>• <strong>Durée minimale :</strong> 5 minutes</li>
+                    <li>• <strong>Durée maximale :</strong> 10 heures</li>
+                    <li>• <strong>Exemple valide :</strong> 07h30-12h00</li>
                   </ul>
                 </div>
               </div>
@@ -534,22 +543,6 @@ export function CreateProjectWizard({
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onCancel}>Annuler</Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => {
-                console.log("🔍 Debug - Valeurs actuelles:", form.getValues());
-                console.log("🔍 Debug - Erreurs:", form.formState.errors);
-                console.log("🔍 Debug - État du formulaire:", {
-                  isValid: form.formState.isValid,
-                  isDirty: form.formState.isDirty,
-                  isSubmitting: form.formState.isSubmitting
-                });
-              }}
-              className="text-xs"
-            >
-              🐛 Debug
-            </Button>
             <Button type="submit" variant="accent" disabled={form.formState.isSubmitting}>
               {(() => {
                 if (form.formState.isSubmitting) return "⏳ Création...";
@@ -613,75 +606,119 @@ export function CreateProjectWizard({
                 <LabeledField id="lastName" label="Nom" onChange={updateReportField} removable onRemove={() => removeTemplateField("lastName")} />
               )}
 
-              {/* Champs par catégorie (templates) */}
-              {category === "FieldSurvey" && (
-                <>
-                  {!hiddenFields.has("location") && (
-                    <LabeledField id="location" label="Lieu" onChange={updateReportField} removable onRemove={() => removeTemplateField("location")} />
-                  )}
-                  {!hiddenFields.has("sector") && (
-                    <LabeledField id="sector" label="Secteur" onChange={updateReportField} removable onRemove={() => removeTemplateField("sector")} />
-                  )}
-                  {!hiddenFields.has("personsMet") && (
-                    <LabeledField id="personsMet" label="Personnes rencontrées" type="number" onChange={updateReportField} removable onRemove={() => removeTemplateField("personsMet")} />
-                  )}
-                  {!hiddenFields.has("contactPoints") && (
-                    <LabeledField id="contactPoints" label="Points de contact" type="number" onChange={updateReportField} removable onRemove={() => removeTemplateField("contactPoints")} />
-                  )}
-                </>
-              )}
-              {category === "CallCenter" && (
-                <>
-                  {!hiddenFields.has("calls") && (
-                    <LabeledField id="calls" label="Appels" type="number" onChange={updateReportField} removable onRemove={() => removeTemplateField("calls")} />
-                  )}
-                  {!hiddenFields.has("success") && (
-                    <LabeledField id="success" label="Réussites" type="number" onChange={updateReportField} removable onRemove={() => removeTemplateField("success")} />
-                  )}
-                  {!hiddenFields.has("notes") && (
-                    <LabeledField id="notes" label="Notes" onChange={updateReportField} removable onRemove={() => removeTemplateField("notes")} />
-                  )}
-                </>
-              )}
-              {category === "Training" && (
-                <>
-                  {!hiddenFields.has("sessionTitle") && (
-                    <LabeledField id="sessionTitle" label="Titre de la session" onChange={updateReportField} removable onRemove={() => removeTemplateField("sessionTitle")} />
-                  )}
-                  {!hiddenFields.has("attendees") && (
-                    <LabeledField id="attendees" label="Participants" type="number" onChange={updateReportField} removable onRemove={() => removeTemplateField("attendees")} />
-                  )}
-                </>
-              )}
-              {category === "Accounting" && (
-                <>
-                  {!hiddenFields.has("auditType") && (
-                    <LabeledField id="auditType" label="Type d'audit" onChange={updateReportField} removable onRemove={() => removeTemplateField("auditType")} />
-                  )}
-                  {!hiddenFields.has("documentsChecked") && (
-                    <LabeledField id="documentsChecked" label="Documents vérifiés" type="number" onChange={updateReportField} removable onRemove={() => removeTemplateField("documentsChecked")} />
-                  )}
-                </>
-              )}
-              {category === "Maintenance" && (
-                <>
-                  {!hiddenFields.has("equipment") && (
-                    <LabeledField id="equipment" label="Équipement" onChange={updateReportField} removable onRemove={() => removeTemplateField("equipment")} />
-                  )}
-                  {!hiddenFields.has("actions") && (
-                    <LabeledField id="actions" label="Actions" onChange={updateReportField} removable onRemove={() => removeTemplateField("actions")} />
-                  )}
-                </>
-              )}
-              {category === "Sales" && (
-                <>
-                  {!hiddenFields.has("leads") && (
-                    <LabeledField id="leads" label="Pistes" type="number" onChange={updateReportField} removable onRemove={() => removeTemplateField("leads")} />
-                  )}
-                  {!hiddenFields.has("meetings") && (
-                    <LabeledField id="meetings" label="Réunions" type="number" onChange={updateReportField} removable onRemove={() => removeTemplateField("meetings")} />
-                  )}
-                </>
+              {/* Champs par catégorie (templates dynamiques) */}
+              {category && category !== "Custom" && reportTemplates[category as keyof typeof reportTemplates] && (
+                <div className="space-y-3">
+                  {reportTemplates[category as keyof typeof reportTemplates].map((template) => {
+                    if (hiddenFields.has(template.id)) return null;
+                    
+                    const value = reportFields[template.id] ?? (template.type === 'number' ? 0 : '');
+                    
+                    // Champs de type select
+                    if (template.type === 'select' && template.options) {
+                      return (
+                        <div key={template.id} className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor={template.id}>{template.label}</Label>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              aria-label={`Retirer ${template.label}`} 
+                              onClick={() => removeTemplateField(template.id)}
+                            >
+                              <X className="size-4" />
+                            </Button>
+                          </div>
+                          <Select
+                            value={value as string}
+                            onValueChange={(val: string) => updateReportField(template.id, val)}
+                          >
+                            <SelectTrigger id={template.id}>
+                              <SelectValue placeholder={`Sélectionner ${template.label.toLowerCase()}...`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {template.options.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    }
+                    
+                    // Champs de type textarea
+                    if (template.type === 'textarea') {
+                      return (
+                        <div key={template.id} className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor={template.id}>{template.label}</Label>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              aria-label={`Retirer ${template.label}`} 
+                              onClick={() => removeTemplateField(template.id)}
+                            >
+                              <X className="size-4" />
+                            </Button>
+                          </div>
+                          <Textarea
+                            id={template.id}
+                            value={value as string}
+                            onChange={(e) => updateReportField(template.id, e.target.value)}
+                            rows={3}
+                            placeholder={`Saisir ${template.label.toLowerCase()}...`}
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // Champs de type date
+                    if (template.type === 'date') {
+                      return (
+                        <div key={template.id} className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor={template.id}>{template.label}</Label>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              aria-label={`Retirer ${template.label}`} 
+                              onClick={() => removeTemplateField(template.id)}
+                            >
+                              <X className="size-4" />
+                            </Button>
+                          </div>
+                          <Input
+                            id={template.id}
+                            type="date"
+                            value={value as string}
+                            onChange={(e) => updateReportField(template.id, e.target.value)}
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // Champs de type text et number
+                    return (
+                      <LabeledField 
+                        key={template.id}
+                        id={template.id} 
+                        label={template.label} 
+                        type={template.type === 'number' ? 'number' : 'text'}
+                        onChange={updateReportField} 
+                        removable 
+                        onRemove={() => removeTemplateField(template.id)} 
+                      />
+                    );
+                  })}
+                </div>
               )}
 
               {/* Champs personnalisés améliorés */}

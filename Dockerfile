@@ -59,6 +59,7 @@ WORKDIR /app
 
 # Install production dependencies only
 RUN apk add --no-cache libc6-compat openssl
+RUN npm i -g tsx
 
 # Copy package files
 COPY package*.json ./

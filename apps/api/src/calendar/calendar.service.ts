@@ -112,8 +112,8 @@ export class CalendarService {
       // Day filtering logs removed for production
 
       const timeSlots = dayTasks.map((task) => {
-        const startTime = task.startTime ?? '08:00';
-        const endTime = task.endTime ?? '17:00';
+        const startTime = task.startTime ?? '05:00';
+        const endTime = task.endTime ?? '22:00';
 
         // Task time logs removed for production
 
@@ -209,8 +209,8 @@ export class CalendarService {
 
     tasks.forEach((task) => {
       totalHours += this.calculateHours(
-        task.startTime ?? '08:00',
-        task.endTime ?? '17:00',
+        task.startTime ?? '05:00',
+        task.endTime ?? '22:00',
       );
       switch (task.status) {
         case 'DRAFT':
@@ -342,14 +342,14 @@ export class CalendarService {
       domainId: task.domain.id,
       domainName: task.domain.name,
       domainColor: '#3B82F6',
-      startTime: task.startTime ?? '08:00',
-      endTime: task.endTime ?? '17:00',
+      startTime: task.startTime ?? '05:00',
+      endTime: task.endTime ?? '22:00',
       date: task.date.toISOString().split('T')[0],
       status: task.status,
       description: task.description ?? undefined,
       hoursWorked: this.calculateHours(
-        task.startTime ?? '08:00',
-        task.endTime ?? '17:00',
+        task.startTime ?? '05:00',
+        task.endTime ?? '22:00',
       ),
     };
   }

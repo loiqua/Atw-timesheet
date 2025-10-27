@@ -7,26 +7,23 @@ async function main() {
 
   // Vérifier si des domaines existent déjà
   const existingDomains = await prisma.domain.findMany();
-  
-  if (existingDomains.length > 0) {
-    console.log('✅ Des domaines existent déjà, skip du seed.');
-    console.log('Domaines existants:', existingDomains.map((d: { name: string; slug: string }) => `${d.name} (${d.slug})`).join(', '));
-    return;
-  }
+  console.log('Domaines existants:', existingDomains.map((d: { name: string; slug: string }) => `${d.name} (${d.slug})`).join(', ') || 'aucun');
 
   // Créer les domaines de base
   const domains = [
-    { name: 'Direction', slug: 'direction', description: 'Direction générale' },
-    { name: 'Comptabilité', slug: 'comptabilite', description: 'Service comptable' },
-    { name: 'Informatique', slug: 'informatique', description: 'Service informatique' },
-    { name: 'Enquêteurs', slug: 'enqueteurs', description: 'Équipe des enquêteurs' },
-    { name: 'Ressources Humaines', slug: 'rh', description: 'Service des ressources humaines' },
+    { name: 'Direction', slug: 'direction', description: 'Direction' },
+    { name: 'Études et Conseil', slug: 'etudes-et-conseil', description: 'Études et Conseil' },
+    { name: 'Informatique', slug: 'informatique', description: 'Informatique' },
+    { name: 'Comptabilité et Finance', slug: 'comptabilite-et-finance', description: 'Comptabilité et Finance' },
+    { name: 'Qualité et Statistiques', slug: 'qualite-et-statistiques', description: 'Qualité et Statistiques' },
+    { name: 'Terrain et Enquêtes', slug: 'terrain-et-enquetes', description: 'Terrain et Enquêtes' },
+    { name: 'Administration et Support', slug: 'administration-et-support', description: 'Administration et Support' },
   ];
 
   for (const domain of domains) {
     await prisma.domain.upsert({
       where: { slug: domain.slug },
-      update: {},
+      update: { name: domain.name, description: domain.description },
       create: domain,
     });
     console.log(`✅ Domaine créé : ${domain.name} (${domain.slug})`);

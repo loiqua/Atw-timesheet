@@ -33,36 +33,8 @@ export class TimesheetService {
 
   async createTask(userId: string, dto: CreateTaskDto) {
     await this.ensureDomain(dto.domainId);
-    const date = new Date(dto.date);
-    if (isNaN(date.getTime())) throw new BadRequestException('Invalid date');
-
-    // Logique de calcul des heures et durée
-    let finalDurationMin: number;
-    let finalStartTime: string | null = null;
-    let finalEndTime: string | null = null;
-
-    if (dto.startTime && dto.endTime) {
-      // Nouveau système : calculer la durée à partir des heures
-      if (!isValidTimeRange(dto.startTime, dto.endTime)) {
-        throw new BadRequestException('Plage horaire invalide');
-      }
-
-      const timeInfo = calculateTimeInfo({
-        startTime: dto.startTime,
-        endTime: dto.endTime,
-      });
-
-      finalDurationMin = timeInfo.durationMinutes;
-      finalStartTime = dto.startTime;
-      finalEndTime = dto.endTime;
-    } else if (dto.durationMin) {
-      // Ancien système : utiliser la durée directement
-      finalDurationMin = dto.durationMin;
-    } else {
-      throw new BadRequestException(
-        'Veuillez fournir soit les heures (startTime/endTime) soit la durée (durationMin)',
-      );
-    }
+    const date = this.parseTaskDate(dto.date);
+    const time = this.computeTimesForCreate(dto);
 
     const taskData: Prisma.TaskCreateInput = {
       user: { connect: { id: userId } },
@@ -70,10 +42,10 @@ export class TimesheetService {
       date,
       title: dto.title,
       description: dto.description ?? null,
-      durationMin: finalDurationMin,
+      durationMin: time.durationMin,
       status: 'DRAFT',
-      ...(finalStartTime && { startTime: finalStartTime }),
-      ...(finalEndTime && { endTime: finalEndTime }),
+      ...(time.startTime && { startTime: time.startTime }),
+      ...(time.endTime && { endTime: time.endTime }),
     };
 
     const task = await this.prisma.task.create({
@@ -94,6 +66,49 @@ export class TimesheetService {
     }
 
     return this.getTaskById(userId, task.id, { allowAdmin: true });
+  }
+
+  private parseTaskDate(dateStr: string): Date {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) throw new BadRequestException('Invalid date');
+    return d;
+  }
+
+  private computeTimesForCreate(dto: CreateTaskDto): {
+    durationMin: number;
+    startTime: string | null;
+    endTime: string | null;
+  } {
+    if (dto.startTime && dto.endTime) {
+      if (!isValidTimeRange(dto.startTime, dto.endTime)) {
+        throw new BadRequestException('Plage horaire invalide');
+      }
+      const info = calculateTimeInfo({
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+      });
+      if (info.durationMinutes < 5) {
+        throw new BadRequestException('Minimum duration is 5 minutes');
+      }
+      return {
+        durationMin: info.durationMinutes,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+      };
+    }
+    if (dto.durationMin !== undefined) {
+      if (dto.durationMin < 5) {
+        throw new BadRequestException('Minimum duration is 5 minutes');
+      }
+      return {
+        durationMin: dto.durationMin,
+        startTime: null,
+        endTime: null,
+      };
+    }
+    throw new BadRequestException(
+      'Veuillez fournir soit les heures (startTime/endTime) soit la durée (durationMin)',
+    );
   }
 
   async updateTask(userId: string, taskId: string, dto: UpdateTaskDto) {

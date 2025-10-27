@@ -82,7 +82,10 @@ export function TimeRangeInput({
             onChange={(e) => setStartTime(e.target.value)}
             disabled={disabled}
             className="font-mono"
-            placeholder="08:00"
+            min="05:00"
+            max="21:59"
+            step={60}
+            placeholder="05:00"
           />
         </div>
 
@@ -98,7 +101,10 @@ export function TimeRangeInput({
             onChange={(e) => setEndTime(e.target.value)}
             disabled={disabled}
             className="font-mono"
-            placeholder="17:00"
+            min="05:01"
+            max="22:00"
+            step={60}
+            placeholder="22:00"
           />
         </div>
       </div>

@@ -15,9 +15,7 @@
     "test:all": "npm run test && npm run test:e2e && npm run test:coverage",
     "db:migrate": "turbo run db:migrate",
     "db:seed": "turbo run db:seed",
-    "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:reset": "turbo run db:reset",
-    "demo:setup": "bash scripts/demo-setup.sh",
     "start": "turbo run start",
     "start:prod": "turbo run start:prod"
   },

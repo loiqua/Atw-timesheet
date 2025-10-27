@@ -29,6 +29,7 @@ import {
 import type { CreateTaskInput, ListTasksQuery, Task, TaskStatus, Paginated } from "@/features/timesheet/types";
 import { CreateProjectWizard } from "@/features/timesheet/components/CreateProjectWizard";
 import { ModernEditTaskDialog } from "@/components/timesheet/ModernEditTaskDialog";
+import { UserAvatar } from "@/components/timesheet/UserAvatar";
 
 const statusBadge: Record<TaskStatus, { label: string; variant: "success" | "destructive" | "secondary" | "outline" | "default" }> = {
   DRAFT: { label: "Brouillon", variant: "secondary" },
@@ -212,7 +213,7 @@ export default function TimesheetPage() {
   const onDownloadPdf = async (task: Task) => {
     const { contentType, data } = await getTaskPdfBase64(task.id);
     const d = new Date(task.date);
-    const fn = `timesheet-${d.toISOString().slice(0, 10)}-${task.title.replace(/\s+/g, "-")}.pdf`;
+    const fn = `timesheet-${d.toISOString().slice(0, 10)}-${task.title.replaceAll(/\s+/g, "-")}.pdf`;
     downloadBase64File(data, contentType, fn);
   };
 
@@ -229,8 +230,8 @@ export default function TimesheetPage() {
     if (task.startTime && task.endTime) {
       const formatTime = (time: string) => {
         const [hours, minutes] = time.split(':');
-        const h = parseInt(hours);
-        const m = parseInt(minutes);
+        const h = Number.parseInt(hours);
+        const m = Number.parseInt(minutes);
         return m === 0 ? `${h}h` : `${h}h${m.toString().padStart(2, '0')}`;
       };
       return `${formatTime(task.startTime)} → ${formatTime(task.endTime)}`;
@@ -504,6 +505,35 @@ export default function TimesheetPage() {
                     </Badge>
                   </div>
                   
+                  {/* Utilisateur */}
+                  <div>
+                    {(() => {
+                      if (t.user) {
+                        return <UserAvatar user={t.user} size="sm" showName />;
+                      }
+                      if (me && t.userId === me.id) {
+                        const nameParts = me.fullName.split(' ');
+                        const currentUser = {
+                          id: me.id,
+                          email: me.email,
+                          username: me.username,
+                          firstName: nameParts[0] ?? null,
+                          lastName: nameParts.slice(1).join(' ') || null,
+                          role: me.role,
+                        };
+                        return <UserAvatar user={currentUser} size="sm" showName />;
+                      }
+                      const fallbackUser = {
+                        id: t.userId,
+                        email: `user-${t.userId.slice(0, 8)}`,
+                        firstName: null,
+                        lastName: null,
+                        role: 'EMPLOYEE',
+                      };
+                      return <UserAvatar user={fallbackUser} size="sm" showName />;
+                    })()}
+                  </div>
+                  
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs">{t.domain?.name ?? "-"}</Badge>
@@ -586,7 +616,7 @@ export default function TimesheetPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const note = window.prompt("Note de révision");
+                              const note = globalThis.prompt("Note de révision");
                               if (note && note.trim().length >= 3) mutateRequestRevision.mutate({ id: t.id, note });
                             }}
                             disabled={mutateRequestRevision.isPending}
@@ -621,6 +651,7 @@ export default function TimesheetPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
+              <TableHead>Utilisateur</TableHead>
               <TableHead>Domaine</TableHead>
               <TableHead>Activité</TableHead>
               <TableHead>Description</TableHead>
@@ -632,14 +663,47 @@ export default function TimesheetPage() {
           </TableHeader>
           <TableBody>
             {isLoading && (
-              <TableRow><TableCell colSpan={8}>Chargement…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9}>Chargement…</TableCell></TableRow>
             )}
             {isError && (
-              <TableRow><TableCell colSpan={8} className="text-destructive">{error?.message ?? "Erreur"}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-destructive">{error?.message ?? "Erreur"}</TableCell></TableRow>
             )}
             {(data?.tasks ?? []).map((t: Task) => (
               <TableRow key={t.id}>
                 <TableCell>{new Date(t.date).toLocaleDateString('fr-FR')}</TableCell>
+                <TableCell>
+                  {(() => {
+                    // Si le backend renvoie les données user, les utiliser
+                    if (t.user) {
+                      return <UserAvatar user={t.user} size="sm" showName />;
+                    }
+                    
+                    // Sinon, créer un utilisateur factice basé sur userId
+                    // Si c'est la tâche de l'utilisateur connecté, utiliser ses données
+                    if (me && t.userId === me.id) {
+                      const nameParts = me.fullName.split(' ');
+                      const currentUser = {
+                        id: me.id,
+                        email: me.email,
+                        username: me.username,
+                        firstName: nameParts[0] ?? null,
+                        lastName: nameParts.slice(1).join(' ') || null,
+                        role: me.role,
+                      };
+                      return <UserAvatar user={currentUser} size="sm" showName />;
+                    }
+                    
+                    // Sinon, créer un utilisateur générique
+                    const fallbackUser = {
+                      id: t.userId,
+                      email: `user-${t.userId.slice(0, 8)}`,
+                      firstName: null,
+                      lastName: null,
+                      role: 'EMPLOYEE',
+                    };
+                    return <UserAvatar user={fallbackUser} size="sm" showName />;
+                  })()}
+                </TableCell>
                 <TableCell><Badge variant="outline">{t.domain?.name ?? "-"}</Badge></TableCell>
                 <TableCell className="font-semibold">{t.title}</TableCell>
                 <TableCell className="max-w-[280px] truncate" title={t.description ?? undefined}>{t.description ?? "-"}</TableCell>
@@ -703,7 +767,7 @@ export default function TimesheetPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const note = window.prompt("Note de révision");
+                            const note = globalThis.prompt("Note de révision");
                             if (note && note.trim().length >= 3) mutateRequestRevision.mutate({ id: t.id, note });
                           }}
                           disabled={mutateRequestRevision.isPending}
@@ -716,7 +780,7 @@ export default function TimesheetPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            const reason = window.prompt("Raison du refus");
+                            const reason = globalThis.prompt("Raison du refus");
                             if (reason && reason.trim().length >= 3) mutateReject.mutate({ id: t.id, reason });
                           }}
                           disabled={mutateReject.isPending}

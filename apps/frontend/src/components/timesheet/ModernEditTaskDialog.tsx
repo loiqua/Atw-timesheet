@@ -20,14 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Save, 
   X, 
-  Building2, 
-  FileText,
-  CheckCircle,
   ArrowRight,
   Plus,
   Trash2
@@ -36,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { updateTask, listDomains, type Domain } from '@/features/timesheet/api';
 import type { Task, UpdateTaskInput, ReportType } from '@/features/timesheet/types';
 import { useAuthStore } from '@/lib/auth-store';
+import { reportTemplates } from './report-templates';
 
 // Composants séparés pour réduire la complexité cognitive
 
@@ -151,6 +148,56 @@ const DialogHeaderContent: React.FC<DialogHeaderContentProps> = ({
   </DialogHeader>
 );
 
+// Composant LabeledField pour les champs prédéfinis
+interface LabeledFieldProps {
+  readonly id: string;
+  readonly label: string;
+  readonly type?: "text" | "number";
+  readonly value: string | number;
+  readonly onChange: (fieldId: string, value: string | number) => void;
+  readonly removable?: boolean;
+  readonly onRemove?: () => void;
+}
+
+const LabeledField: React.FC<LabeledFieldProps> = ({ 
+  id, 
+  label, 
+  type = "text", 
+  value,
+  onChange, 
+  removable, 
+  onRemove 
+}) => {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between">
+        <Label htmlFor={id}>{label}</Label>
+        {removable && (
+          <Button 
+            type="button" 
+            variant="ghost" 
+            size="sm"
+            className="h-6 w-6 p-0"
+            aria-label={`Retirer ${label}`} 
+            onClick={onRemove}
+          >
+            <X className="size-4" />
+          </Button>
+        )}
+      </div>
+      <Input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => {
+          const newValue = type === "number" ? Number(e.target.value || 0) : e.target.value;
+          onChange(id, newValue);
+        }}
+      />
+    </div>
+  );
+};
+
 // Composant pour rendre un champ personnalisé
 interface CustomFieldRendererProps {
   field: CustomField;
@@ -190,7 +237,7 @@ const CustomFieldRenderer: React.FC<CustomFieldRendererProps> = ({ field, onUpda
           <Input
             type="number"
             value={field.value as number}
-            onChange={(e) => onUpdate({ value: parseFloat(e.target.value) || 0 })}
+            onChange={(e) => onUpdate({ value: Number.parseFloat(e.target.value) || 0 })}
             placeholder={`Saisir ${field.label.toLowerCase()}...`}
           />
         );
@@ -268,19 +315,148 @@ interface CustomField {
   id: string;
   type: 'text' | 'textarea' | 'checkbox' | 'select' | 'date' | 'number';
   label: string;
-  value: string | boolean | number | Date;
+  value: string | boolean | number;
   required?: boolean;
   options?: string[]; // Pour les select
 }
 
+const reportCategories = [
+  { key: "Direction", label: "Direction", icon: "👔", subtitle: "Réunions stratégiques, décisions" },
+  { key: "Studies", label: "Études et Conseil", icon: "📊", subtitle: "Études marketing, analyses" },
+  { key: "IT", label: "Informatique", icon: "💻", subtitle: "Maintenance, développement" },
+  { key: "Finance", label: "Comptabilité et Finance", icon: "💰", subtitle: "Factures, paie, banque" },
+  { key: "Quality", label: "Qualité et Statistiques", icon: "✅", subtitle: "Audit, contrôle données" },
+  { key: "Field", label: "Terrain et Enquêtes", icon: "🚶", subtitle: "Collecte de données terrain" },
+  { key: "Admin", label: "Administration et Support", icon: "📋", subtitle: "Logistique, secrétariat" },
+  { key: "Custom", label: "Personnalisé", icon: "✨", subtitle: "Créez vos propres champs" },
+] as const;
+
 interface EditTaskFormData {
+  projectType: 'FIELD' | 'INTERNAL' | 'CLIENT';
   title: string;
   description: string;
   domainId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
   reportType: ReportType;
   reportCategory: string;
+  customCategoryName: string;
+  reportFields: Record<string, string | number>;
   customFields: CustomField[];
+  comments: string;
 }
+
+// Champs prédéfinis connus (ceux du wizard et des templates)
+const KNOWN_FIELDS = new Set([
+  'firstName', 'lastName', 'category', 'projectType', 'customCategoryName', 'comments',
+  // Direction
+  'meetingType', 'meetingDate', 'participants', 'decisions', 'actions', 'deadline', 'budget', 'status',
+  // Studies
+  'studyType', 'clientName', 'startDate', 'endDate', 'methodology', 'sampleSize', 'zones', 'progress', 'deliverables', 'observations',
+  // IT
+  'interventionType', 'hardware', 'software', 'ticketNumber', 'priority', 'interventionDate', 'duration', 'problem', 'solution',
+  // Finance
+  'operationType', 'documentNumber', 'operationDate', 'amount', 'beneficiary', 'paymentMethod', 'bankAccount', 'project', 'attachments',
+  // Quality
+  'activityType', 'controlDate', 'questionnairesChecked', 'errorRate', 'nonConformities', 'correctiveActions', 'validationStatus', 'correctionDeadline', 'responsible',
+  // Field
+  'surveyType', 'studyName', 'collectionDate', 'completedQuestionnaires', 'refusals', 'responseRate', 'locations', 'supervisor', 'difficulties', 'equipment', 'missionCost',
+  // Admin
+  'activityDate', 'requester', 'taskDescription', 'materials', 'vehicle', 'mileage', 'cost', 'documentsProcessed'
+]);
+
+const EXCLUDED_FIELDS = new Set(['category', 'projectType', 'customCategoryName', 'comments']);
+
+// Helper pour déterminer le type de champ personnalisé
+const inferCustomFieldType = (value: unknown): CustomField['type'] => {
+  if (typeof value === 'boolean') return 'checkbox';
+  if (typeof value === 'number') return 'number';
+  if (typeof value === 'string' && value.length > 100) return 'textarea';
+  return 'text';
+};
+
+// Helper pour formater le label d'un champ
+const formatFieldLabel = (key: string): string => {
+  return key.charAt(0).toUpperCase() + key.slice(1);
+};
+
+// Helper pour parser les champs du rapport
+const parseReportFields = (
+  reportContent: Record<string, unknown>
+): { reportFields: Record<string, string | number>; customFields: CustomField[] } => {
+  const reportFields: Record<string, string | number> = {};
+  const customFields: CustomField[] = [];
+
+  for (const [key, value] of Object.entries(reportContent)) {
+    if (key.endsWith('_label')) continue;
+
+    if (KNOWN_FIELDS.has(key)) {
+      if (!EXCLUDED_FIELDS.has(key)) {
+        reportFields[key] = value as string | number;
+      }
+    } else {
+      const fieldType = inferCustomFieldType(value);
+      const labelKey = `${key}_label`;
+      const fieldLabel = reportContent[labelKey] as string ?? formatFieldLabel(key);
+
+      customFields.push({
+        id: key,
+        type: fieldType,
+        label: fieldLabel,
+        value: value as string | boolean | number,
+      });
+    }
+  }
+
+  return { reportFields, customFields };
+};
+
+// Helper pour vérifier si une valeur est vide
+const isEmptyValue = (value: unknown): boolean => {
+  return value === '' || value === false || value === null || value === undefined;
+};
+
+// Helper pour ajouter la catégorie au rapport
+const addCategoryToReport = (
+  reportContent: Record<string, unknown>,
+  category: string | null,
+  customCategoryName: string
+): void => {
+  if (category === "Custom" && customCategoryName.trim()) {
+    reportContent.category = customCategoryName.trim();
+    reportContent.customCategoryName = customCategoryName.trim();
+  } else if (category) {
+    reportContent.category = category;
+  }
+};
+
+// Helper pour ajouter les champs prédéfinis au rapport
+const addReportFieldsToReport = (
+  reportContent: Record<string, unknown>,
+  reportFields: Record<string, string | number>
+): void => {
+  for (const [key, value] of Object.entries(reportFields)) {
+    if (!isEmptyValue(value)) {
+      reportContent[key] = value;
+    }
+  }
+};
+
+// Helper pour ajouter les champs personnalisés au rapport
+const addCustomFieldsToReport = (
+  reportContent: Record<string, unknown>,
+  customFields: CustomField[]
+): void => {
+  for (const field of customFields) {
+    if (!isEmptyValue(field.value)) {
+      reportContent[field.id] = field.value;
+      if (field.label && field.label !== field.id) {
+        reportContent[`${field.id}_label`] = field.label;
+      }
+    }
+  }
+};
 
 export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
   task,
@@ -308,18 +484,27 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
   const hasEditPermission = canEditTask(task);
   
   const [formData, setFormData] = useState<EditTaskFormData>({
+    projectType: 'INTERNAL',
     title: '',
     description: '',
     domainId: '',
+    date: new Date().toISOString().slice(0, 10),
+    startTime: '08:00',
+    endTime: '17:00',
     reportType: 'STANDARD',
     reportCategory: '',
+    customCategoryName: '',
+    reportFields: {},
     customFields: [],
+    comments: '',
   });
 
   const [domains, setDomains] = useState<readonly Domain[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [addDetailedReport, setAddDetailedReport] = useState(false);
+  const [category, setCategory] = useState<string | null>(null);
+  const [hiddenFields, setHiddenFields] = useState<Set<string>>(new Set());
 
   // Load domains
   useEffect(() => {
@@ -342,75 +527,33 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
 
   // Initialize form data when task changes
   useEffect(() => {
-    if (task) {
-      const reportContent = task.report?.content as Record<string, unknown> ?? {};
-      const hasReport = task.report && Object.keys(reportContent).length > 0;
-      
-      // Convertir TOUS les champs du rapport en champs dynamiques
-      const customFields: CustomField[] = [];
-      
-      // Mapping des champs standards avec leurs labels
-      const standardFieldsMapping: Record<string, { label: string; type: CustomField['type'] }> = {
-        objectives: { label: 'Objectifs', type: 'textarea' },
-        results: { label: 'Résultats obtenus', type: 'textarea' },
-        difficulties: { label: 'Difficultés rencontrées', type: 'textarea' },
-        nextSteps: { label: 'Prochaines étapes', type: 'textarea' },
-        timeSpent: { label: 'Temps passé', type: 'text' },
-        resources: { label: 'Ressources utilisées', type: 'text' },
-      };
-      
-      // Convertir tous les champs du reportContent (sauf 'category')
-      Object.entries(reportContent).forEach(([key, value]) => {
-        if (key === 'category') return; // Skip category car c'est géré séparément
-        if (key.endsWith('_label')) return; // Skip les labels sauvegardés
-        
-        // Déterminer le type de champ
-        let fieldType: CustomField['type'] = 'text';
-        let fieldLabel: string;
-        
-        // Utiliser le mapping standard si disponible
-        if (standardFieldsMapping[key]) {
-          fieldType = standardFieldsMapping[key].type;
-          fieldLabel = standardFieldsMapping[key].label;
-        } else {
-          // Pour les champs personnalisés, essayer de deviner le type
-          if (typeof value === 'boolean') {
-            fieldType = 'checkbox';
-          } else if (typeof value === 'number') {
-            fieldType = 'number';
-          } else if (typeof value === 'string' && value.length > 100) {
-            fieldType = 'textarea';
-          }
-          
-          // Vérifier s'il y a un label sauvegardé
-          const labelKey = `${key}_label`;
-          if (reportContent[labelKey]) {
-            fieldLabel = reportContent[labelKey] as string;
-          } else {
-            // Formatter le nom du champ pour l'affichage
-            fieldLabel = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
-          }
-        }
-        
-        customFields.push({
-          id: key,
-          type: fieldType,
-          label: fieldLabel,
-          value: value as string | boolean | number,
-        });
-      });
-      
-      setFormData({
-        title: task.title,
-        description: task.description ?? '',
-        domainId: task.domainId,
-        reportType: task.report?.type ?? 'STANDARD',
-        reportCategory: reportContent.category as string ?? '',
-        customFields,
-      });
-      setAddDetailedReport(Boolean(hasReport));
-      setCurrentStep(1);
-    }
+    if (!task) return;
+
+    const reportContent = task.report?.content as Record<string, unknown> ?? {};
+    const hasReport = task.report && Object.keys(reportContent).length > 0;
+    const savedCategory = reportContent.category as string ?? null;
+    
+    // Parser les champs du rapport
+    const { reportFields, customFields } = parseReportFields(reportContent);
+    
+    setFormData({
+      projectType: (reportContent.projectType as 'FIELD' | 'INTERNAL' | 'CLIENT') ?? 'INTERNAL',
+      title: task.title,
+      description: task.description ?? '',
+      domainId: task.domainId,
+      date: task.date ? new Date(task.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      startTime: task.startTime ?? '08:00',
+      endTime: task.endTime ?? '17:00',
+      reportType: task.report?.type ?? 'STANDARD',
+      reportCategory: savedCategory ?? '',
+      customCategoryName: reportContent.customCategoryName as string ?? '',
+      reportFields,
+      customFields,
+      comments: reportContent.comments as string ?? '',
+    });
+    setCategory(savedCategory);
+    setAddDetailedReport(Boolean(hasReport));
+    setCurrentStep(1);
   }, [task]);
 
   // Fonction de validation des données
@@ -430,8 +573,12 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
   };
 
   // Fonction de construction du rapport
-  const buildReportData = (data: EditTaskFormData) => {
-    if (!addDetailedReport) {
+  const buildReportData = (data: EditTaskFormData): {
+    reportContent: Record<string, unknown> | undefined;
+    reportType: ReportType | undefined;
+    reportCategory: string | undefined;
+  } => {
+    if (!addDetailedReport || !category) {
       return {
         reportContent: undefined,
         reportType: undefined,
@@ -441,21 +588,15 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
 
     const reportContent: Record<string, unknown> = {};
     
-    if (data.reportCategory.trim()) reportContent.category = data.reportCategory.trim();
+    // Ajouter tous les champs au rapport
+    addCategoryToReport(reportContent, category, data.customCategoryName);
+    addReportFieldsToReport(reportContent, data.reportFields);
+    addCustomFieldsToReport(reportContent, data.customFields);
     
-    // Convertir les champs dynamiques en contenu de rapport
-    // On sauvegarde à la fois l'ID et le label pour une meilleure compatibilité
-    data.customFields.forEach(field => {
-      if (field.value !== '' && field.value !== false && field.value !== null && field.value !== undefined) {
-        // Sauvegarder avec l'ID original pour la compatibilité
-        reportContent[field.id] = field.value;
-        
-        // Sauvegarder aussi avec le label pour l'affichage
-        if (field.label && field.label !== field.id) {
-          reportContent[`${field.id}_label`] = field.label;
-        }
-      }
-    });
+    // Commentaires
+    if (data.comments.trim()) {
+      reportContent.comments = data.comments.trim();
+    }
     
     // Si aucun contenu, pas de rapport
     if (Object.keys(reportContent).length === 0) {
@@ -466,12 +607,12 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
       };
     }
 
-    console.log('Rapport construit:', reportContent); // Debug
-
     return {
       reportContent,
-      reportType: data.reportType,
-      reportCategory: data.reportCategory.trim() || undefined,
+      reportType: (category === "Custom" ? "CUSTOM" : "STANDARD") as ReportType,
+      reportCategory: category === "Custom" && data.customCategoryName.trim() 
+        ? data.customCategoryName.trim() 
+        : category,
     };
   };
 
@@ -482,10 +623,18 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
       validateFormData(data);
       const { reportContent, reportType, reportCategory } = buildReportData(data);
 
+      // Ajouter projectType au reportContent si un rapport est présent
+      if (reportContent && typeof reportContent === 'object') {
+        reportContent.projectType = data.projectType;
+      }
+
       const updateData: UpdateTaskInput = {
         title: data.title.trim(),
         description: data.description.trim() || undefined,
         domainId: data.domainId,
+        date: data.date,
+        startTime: data.startTime,
+        endTime: data.endTime,
         reportType,
         reportCategory,
         reportContent,
@@ -511,6 +660,48 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
 
   const handleInputChange = (field: keyof EditTaskFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Fonction pour rendre les options du select de domaine
+  const renderDomainOptions = () => {
+    if (isLoadingData) {
+      return (
+        <SelectItem value="loading" disabled>
+          Chargement des domaines...
+        </SelectItem>
+      );
+    }
+    
+    if (domains.length === 0) {
+      return (
+        <SelectItem value="no-domains" disabled>
+          Aucun domaine disponible
+        </SelectItem>
+      );
+    }
+    
+    return domains.map((d) => (
+      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+    ));
+  };
+
+  const updateReportField = (fieldId: string, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      reportFields: {
+        ...prev.reportFields,
+        [fieldId]: value
+      }
+    }));
+  };
+
+  const removeTemplateField = (fieldId: string) => {
+    setHiddenFields((s) => new Set([...s, fieldId]));
+    setFormData(prev => {
+      const next = { ...prev.reportFields };
+      delete next[fieldId];
+      return { ...prev, reportFields: next };
+    });
   };
 
   // Fonctions pour gérer les champs dynamiques
@@ -653,232 +844,437 @@ export const ModernEditTaskDialog: React.FC<ModernEditTaskDialogProps> = ({
         <form onSubmit={handleSubmit} className="space-y-6">
           {currentStep === 1 && (
             <div className="space-y-6">
-              {/* Informations de base */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Informations de base
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Titre */}
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Titre de la tâche *</Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => handleInputChange('title', e.target.value)}
-                      placeholder="Décrivez brièvement la tâche..."
-                      required
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description (optionnel)</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => handleInputChange('description', e.target.value)}
-                      placeholder="Décrivez la tâche en détail..."
-                      rows={4}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Type de projet */}
+              <fieldset className="space-y-4">
+                <legend className="text-base font-semibold text-gray-900 dark:text-white mb-4">Type de projet</legend>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(['FIELD', 'INTERNAL', 'CLIENT'] as const).map((t) => {
+                    const labels = {
+                      FIELD: { name: "Terrain", icon: "🏞️", desc: "Travail sur le terrain" },
+                      INTERNAL: { name: "Interne", icon: "🏢", desc: "Projet interne" },
+                      CLIENT: { name: "Client", icon: "🤝", desc: "Mission client" }
+                    };
+                    const isSelected = formData.projectType === t;
+                    
+                    return (
+                      <label 
+                        key={t} 
+                        className={`
+                          relative flex flex-col items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200
+                          ${isSelected 
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md' 
+                            : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                          }
+                        `}
+                      >
+                        <input 
+                          type="radio" 
+                          value={t} 
+                          checked={formData.projectType === t}
+                          onChange={(e) => handleInputChange('projectType', e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className="text-2xl mb-2">{labels[t].icon}</div>
+                        <div className={`font-medium text-sm ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'}`}>
+                          {labels[t].name}
+                        </div>
+                        <div className={`text-xs text-center mt-1 ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                          {labels[t].desc}
+                        </div>
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
 
               {/* Domaine */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Domaine d&apos;activité
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <Label htmlFor="domain">Domaine *</Label>
-                    <Select
-                      value={formData.domainId}
-                      onValueChange={(value: string) => handleInputChange('domainId', value)}
-                      disabled={isLoadingData}
-                    >
-                      <SelectTrigger>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <SelectValue placeholder="Sélectionner un domaine" />
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {domains.length === 0 ? (
-                          <SelectItem value="no-domains" disabled>
-                            {isLoadingData ? 'Chargement...' : 'Aucun domaine disponible'}
-                          </SelectItem>
-                        ) : (
-                          domains.map((domain) => (
-                            <SelectItem key={domain.id} value={domain.id}>
-                              {domain.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+              <div className="space-y-3">
+                <Label htmlFor="domain" className="text-base font-semibold text-gray-900 dark:text-white">
+                  Domaine d&apos;activité
+                </Label>
+                <div className="relative">
+                  <Select
+                    value={formData.domainId}
+                    onValueChange={(value: string) => handleInputChange('domainId', value)}
+                    disabled={isLoadingData}
+                  >
+                    <SelectTrigger id="domain">
+                      <SelectValue placeholder="Sélectionner un domaine..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-fit">
+                      {renderDomainOptions()}
+                    </SelectContent>
+                  </Select>
+                  {formData.domainId && !isLoadingData && domains.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Domaine actuel : {domains.find(d => d.id === formData.domainId)?.name ?? 'Chargement...'}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Titre */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="title">Titre du projet</Label>
+                <Input
+                  id="title"
+                  placeholder="Nom du projet"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* Description */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="desc">Description de la tâche (optionnel)</Label>
+                <Textarea 
+                  id="desc" 
+                  className="min-h-24" 
+                  placeholder="Résumé rapide du travail effectué (optionnel)..." 
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                />
+              </div>
+
+              {/* Date */}
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => handleInputChange('date', e.target.value)}
+                />
+              </div>
+
+              {/* Horaires de travail */}
+              <div className="space-y-3">
+                <Label className="text-base font-semibold text-gray-900 dark:text-white">
+                  Horaires de travail
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="startTime">🕐 Heure de début</Label>
+                    <Input
+                      id="startTime"
+                      type="time"
+                      min="05:00"
+                      max="21:59"
+                      step={60}
+                      placeholder="05:00"
+                      className="border-2 focus:border-blue-500"
+                      value={formData.startTime}
+                      onChange={(e) => handleInputChange('startTime', e.target.value)}
+                    />
+                    <span className="text-xs text-gray-500">Entre 05h00 et 21h59</span>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="endTime">🕕 Heure de fin</Label>
+                    <Input
+                      id="endTime"
+                      type="time"
+                      min="05:01"
+                      max="22:00"
+                      step={60}
+                      placeholder="22:00"
+                      className="border-2 focus:border-blue-500"
+                      value={formData.endTime}
+                      onChange={(e) => handleInputChange('endTime', e.target.value)}
+                    />
+                    <span className="text-xs text-gray-500">Entre 05h01 et 22h00</span>
+                  </div>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-600 dark:text-blue-400 text-sm">ℹ️</span>
+                    <div className="text-xs text-blue-700 dark:text-blue-300">
+                      <p className="font-medium mb-1">Règles des heures de travail :</p>
+                      <ul className="space-y-1 text-xs">
+                        <li>• <strong>Début :</strong> Entre 05h00 et 21h59</li>
+                        <li>• <strong>Fin :</strong> Entre 05h01 et 22h00</li>
+                        <li>• <strong>Durée minimale :</strong> 5 minutes</li>
+                        <li>• <strong>Durée maximale :</strong> 10 heures</li>
+                        <li>• <strong>Exemple valide :</strong> 07h30-12h00</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Option rapport détaillé */}
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="addDetailedReport"
-                      checked={addDetailedReport}
-                      onCheckedChange={setAddDetailedReport}
-                    />
-                    <Label htmlFor="addDetailedReport" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Ajouter un rapport détaillé
-                    </Label>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Cochez cette case si votre projet nécessite un rapport spécifique (terrain, call center, formation, etc.).
-                  </p>
-                </CardContent>
-              </Card>
+              <div>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    id="addDetailedReport"
+                    checked={addDetailedReport}
+                    onCheckedChange={setAddDetailedReport}
+                  />
+                  <span>Ajouter un rapport détaillé</span>
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">Cochez cette case si votre projet nécessite un rapport spécifique (terrain, call center, formation, etc.).</p>
+              </div>
             </div>
           )}
 
           {currentStep === 2 && (
             <div className="space-y-6">
-              {/* Configuration du rapport */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Configuration du rapport
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Type de rapport */}
-                    <div className="space-y-2">
-                      <Label htmlFor="reportType">Type de rapport</Label>
-                      <Select
-                        value={formData.reportType}
-                        onValueChange={(value: string) => handleInputChange('reportType', value as ReportType)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner le type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="STANDARD">Standard</SelectItem>
-                          <SelectItem value="CUSTOM">Personnalisé</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+              {/* Sélection de la catégorie de rapport */}
+              <div>
+                <div className="text-sm font-medium mb-2">Sélectionner un type de rapport</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {reportCategories.map((c) => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => setCategory(c.key)}
+                      className={`rounded-md border p-3 text-left transition-all ${
+                        category === c.key 
+                          ? "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20" 
+                          : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                      }`}
+                      aria-pressed={category === c.key}
+                      aria-label={`Sélectionner ${c.label}`}
+                    >
+                      <div className="text-2xl">{c.icon}</div>
+                      <div className="font-medium">{c.label}</div>
+                      <div className="text-muted-foreground text-xs">{c.subtitle}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                    {/* Catégorie */}
-                    <div className="space-y-2">
-                      <Label htmlFor="reportCategory">Catégorie</Label>
-                      <Input
-                        id="reportCategory"
-                        value={formData.reportCategory}
-                        onChange={(e) => handleInputChange('reportCategory', e.target.value)}
-                        placeholder="Ex: Développement, Réunion, Formation..."
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Champ pour nom personnalisé quand Custom est sélectionné */}
+              {category === "Custom" && (
+                <div className="space-y-2">
+                  <Label htmlFor="customCategoryName" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    ✨ Nom de votre catégorie personnalisée
+                  </Label>
+                  <Input
+                    id="customCategoryName"
+                    value={formData.customCategoryName}
+                    onChange={(e) => handleInputChange('customCategoryName', e.target.value)}
+                    placeholder="ex: Réunion client, Formation spécialisée, Audit terrain..."
+                    className="w-full"
+                  />
+                </div>
+              )}
 
-              {/* Champs personnalisés du rapport */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5" />
-                    Champs du rapport
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Liste des champs personnalisés */}
-                  {formData.customFields.length > 0 ? (
-                    <div className="space-y-4">
-                      {formData.customFields.map((field) => (
-                        <CustomFieldRenderer
-                          key={field.id}
-                          field={field}
-                          onUpdate={(updates) => updateCustomField(field.id, updates)}
-                          onRemove={() => removeCustomField(field.id)}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Aucun champ personnalisé ajouté</p>
-                      <p>Cliquez sur &quot;Ajouter un champ&quot; pour commencer</p>
-                      <p className="text-sm">Les champs personnalisés sont des champs qui ne sont pas inclus par défaut dans le rapport.</p>
+              {/* Champs par catégorie */}
+              {category && (
+                <div className="flex flex-col gap-2">
+                  <div className="text-sm font-medium">Détails</div>
+                  
+                  {/* Champs communs */}
+                  {!hiddenFields.has("firstName") && (
+                    <LabeledField 
+                      id="firstName" 
+                      label="Prénom" 
+                      value={formData.reportFields.firstName as string ?? ''}
+                      onChange={updateReportField} 
+                      removable 
+                      onRemove={() => removeTemplateField("firstName")} 
+                    />
+                  )}
+                  {!hiddenFields.has("lastName") && (
+                    <LabeledField 
+                      id="lastName" 
+                      label="Nom" 
+                      value={formData.reportFields.lastName as string ?? ''}
+                      onChange={updateReportField} 
+                      removable 
+                      onRemove={() => removeTemplateField("lastName")} 
+                    />
+                  )}
+
+                  {/* Champs par catégorie (templates dynamiques) */}
+                  {category && category !== "Custom" && reportTemplates[category as keyof typeof reportTemplates] && (
+                    <div className="space-y-3">
+                      {reportTemplates[category as keyof typeof reportTemplates].map((template) => {
+                        if (hiddenFields.has(template.id)) return null;
+                        
+                        const value = formData.reportFields[template.id] ?? (template.type === 'number' ? 0 : '');
+                        
+                        // Champs de type select
+                        if (template.type === 'select' && template.options) {
+                          return (
+                            <div key={template.id} className="flex flex-col gap-1">
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor={template.id}>{template.label}</Label>
+                                <Button 
+                                  type="button" 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  aria-label={`Retirer ${template.label}`} 
+                                  onClick={() => removeTemplateField(template.id)}
+                                >
+                                  <X className="size-4" />
+                                </Button>
+                              </div>
+                              <Select
+                                value={value as string}
+                                onValueChange={(val: string) => updateReportField(template.id, val)}
+                              >
+                                <SelectTrigger id={template.id}>
+                                  <SelectValue placeholder={`Sélectionner ${template.label.toLowerCase()}...`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {template.options.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          );
+                        }
+                        
+                        // Champs de type textarea
+                        if (template.type === 'textarea') {
+                          return (
+                            <div key={template.id} className="flex flex-col gap-1">
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor={template.id}>{template.label}</Label>
+                                <Button 
+                                  type="button" 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  aria-label={`Retirer ${template.label}`} 
+                                  onClick={() => removeTemplateField(template.id)}
+                                >
+                                  <X className="size-4" />
+                                </Button>
+                              </div>
+                              <Textarea
+                                id={template.id}
+                                value={value as string}
+                                onChange={(e) => updateReportField(template.id, e.target.value)}
+                                rows={3}
+                                placeholder={`Saisir ${template.label.toLowerCase()}...`}
+                              />
+                            </div>
+                          );
+                        }
+                        
+                        // Champs de type text, number, date (LabeledField)
+                        if (template.type === 'date') {
+                          return (
+                            <div key={template.id} className="flex flex-col gap-1">
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor={template.id}>{template.label}</Label>
+                                <Button 
+                                  type="button" 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  aria-label={`Retirer ${template.label}`} 
+                                  onClick={() => removeTemplateField(template.id)}
+                                >
+                                  <X className="size-4" />
+                                </Button>
+                              </div>
+                              <Input
+                                id={template.id}
+                                type="date"
+                                value={value as string}
+                                onChange={(e) => updateReportField(template.id, e.target.value)}
+                              />
+                            </div>
+                          );
+                        }
+                        
+                        // Champs de type text et number
+                        return (
+                          <LabeledField 
+                            key={template.id}
+                            id={template.id} 
+                            label={template.label} 
+                            type={template.type === 'number' ? 'number' : 'text'}
+                            value={value}
+                            onChange={updateReportField} 
+                            removable 
+                            onRemove={() => removeTemplateField(template.id)} 
+                          />
+                        );
+                      })}
                     </div>
                   )}
 
-                  {/* Boutons pour ajouter des champs */}
-                  <div className="border-t pt-4">
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addCustomField('text')}
-                        className="flex items-center gap-2"
+                  {/* Champs personnalisés améliorés */}
+                  <div className="mt-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900 dark:text-white">Champs personnalisés</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Créez vos propres champs avec différents types</div>
+                      </div>
+                      <Button 
+                        type="button" 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => addCustomField('text')} 
+                        className="gap-1 bg-white dark:bg-gray-700"
                       >
-                        <Plus className="h-4 w-4" />
-                        Texte
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addCustomField('textarea')}
-                        className="flex items-center gap-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Zone de texte
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addCustomField('checkbox')}
-                        className="flex items-center gap-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Case à cocher
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addCustomField('number')}
-                        className="flex items-center gap-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Nombre
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addCustomField('date')}
-                        className="flex items-center gap-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Date
+                        <Plus className="size-4" /> Ajouter un champ
                       </Button>
                     </div>
+                    
+                    {formData.customFields.length === 0 && (
+                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <div className="text-4xl mb-2">📝</div>
+                        <div className="text-sm">Aucun champ personnalisé ajouté</div>
+                        <div className="text-xs">Cliquez sur &ldquo;Ajouter un champ&rdquo; pour commencer</div>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-4">
+                      {formData.customFields.map((f) => (
+                        <CustomFieldRenderer
+                          key={f.id}
+                          field={f}
+                          onUpdate={(updates) => updateCustomField(f.id, updates)}
+                          onRemove={() => removeCustomField(f.id)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              )}
+
+              {/* Section Observations */}
+              {category && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                      <span className="text-blue-600 dark:text-blue-400 text-sm">💬</span>
+                    </div>
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">Observations</h3>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="comments" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      📝 Commentaires
+                    </Label>
+                    <Textarea
+                      id="comments"
+                      rows={4}
+                      value={formData.comments}
+                      onChange={(e) => handleInputChange('comments', e.target.value)}
+                      className="w-full rounded-lg border-2 border-gray-200 dark:border-gray-600 px-4 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm resize-none transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      placeholder="Vos observations, remarques et commentaires..."
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -7,6 +7,14 @@ export type DomainRef = {
   readonly slug: string;
 };
 
+export type UserRef = {
+  readonly id: string;
+  readonly email: string;
+  readonly firstName: string | null;
+  readonly lastName: string | null;
+  readonly role: string;
+};
+
 export type Report = {
   readonly type: ReportType;
   readonly content: Record<string, unknown> | null;
@@ -28,6 +36,7 @@ export type Task = {
   readonly createdAt: string; // ISO 8601
   readonly updatedAt: string; // ISO 8601
   readonly domain: DomainRef;
+  readonly user?: UserRef; // Informations de l'utilisateur
   readonly report: Report | null;
 };
 
